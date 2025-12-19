@@ -1,5 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
@@ -51,8 +52,19 @@ class _EditNotePageState extends State<EditNotePage> {
     Navigator.pop(context);
   }
 
+  final List<CharacterShortcutEvent> customCharacterShortcuts = [
+    ...standardCharacterShortcutEvents,
+    ...markdownSyntaxShortcutEvents,
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final baseStyle = GoogleFonts.inter(
+      // Replace with your font
+      color: Theme.of(context).colorScheme.inversePrimary,
+      fontSize: 16,
+    );
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -71,19 +83,19 @@ class _EditNotePageState extends State<EditNotePage> {
           ),
         ],
       ),
+      // TODO: Add a toolbar above keyboard for common stuff.
       body: AppFlowyEditor(
         editorState: _editorState,
-        characterShortcutEvents: standardCharacterShortcutEvents,
-        commandShortcutEvents: standardCommandShortcutEvents,
+        characterShortcutEvents: customCharacterShortcuts,
+        // commandShortcutEvents: standardCommandShortcutEvents,
         editorStyle: EditorStyle.mobile(
           padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
           cursorColor: Theme.of(context).colorScheme.inversePrimary,
           selectionColor: Theme.of(context).colorScheme.inversePrimary,
           textStyleConfiguration: TextStyleConfiguration(
-            text: TextStyle(
-              color: Theme.of(context).colorScheme.inversePrimary,
-              fontSize: 16,
-            ),
+            text: baseStyle,
+            bold: baseStyle.copyWith(fontWeight: FontWeight.bold),
+            italic: baseStyle.copyWith(fontStyle: FontStyle.italic),
           ),
           dragHandleColor: Theme.of(context).colorScheme.inversePrimary,
         ),
