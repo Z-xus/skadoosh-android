@@ -40,6 +40,9 @@ dependencies:
   provider: ^6.1.5+1
   google_fonts: ^6.3.3
   popover: ^0.4.0
+  appflowy_editor: ^6.2.0
+
+
 
 dev_dependencies:
   flutter_test:

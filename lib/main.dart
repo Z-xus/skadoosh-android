@@ -9,7 +9,6 @@ void main() async {
   await NoteDatabase.initialize();
 
   runApp(
-    // ChangeNotifierProvider(create: (context) => NoteDatabase(), child: MyApp())
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => NoteDatabase()),
