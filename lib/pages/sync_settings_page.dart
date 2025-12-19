@@ -142,8 +142,11 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sync Settings'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 0,
       ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -151,6 +154,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
           children: [
             // Key Management
             Card(
+              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -158,12 +162,17 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Key Management',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Before syncing, you need to generate or import a sync key. This key determines which notes you can sync with other devices.',
-                      style: TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
@@ -179,6 +188,14 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                           // Refresh sync service after returning from key management
                           await _initializeSyncService();
                         },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.secondary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.inversePrimary,
+                        ),
                         icon: const Icon(Icons.vpn_key),
                         label: const Text('Manage Sync Keys'),
                       ),
@@ -192,6 +209,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
             // Server Configuration
             Card(
+              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -199,15 +217,43 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Sync Server Configuration',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _urlController,
-                      decoration: const InputDecoration(
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
+                      decoration: InputDecoration(
                         labelText: 'Server URL',
                         hintText: 'https://your-server.com',
-                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.inversePrimary,
+                        ),
+                        hintStyle: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.inversePrimary.withValues(alpha: 0.6),
+                        ),
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            width: 2,
+                          ),
+                        ),
                       ),
                       enabled: !_isLoading,
                     ),
@@ -217,6 +263,14 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _configureSyncServer,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                            ),
                             child: _isLoading
                                 ? const SizedBox(
                                     height: 20,
@@ -231,6 +285,14 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                         const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _testConnection,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.secondary,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.inversePrimary,
+                          ),
                           child: const Text('Test'),
                         ),
                       ],
@@ -245,6 +307,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
             // Sync Status
             if (_syncStatus != null) ...[
               Card(
+                color: Theme.of(context).colorScheme.primary,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -252,7 +315,12 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                     children: [
                       Text(
                         'Sync Status',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                            ),
                       ),
                       const SizedBox(height: 16),
                       _buildStatusRow(
@@ -296,6 +364,14 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                           onPressed: (_isLoading || !_syncStatus!.isConfigured)
                               ? null
                               : _performSync,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.secondary,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.inversePrimary,
+                          ),
                           child: _isLoading
                               ? const SizedBox(
                                   height: 20,
@@ -349,6 +425,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
             // Instructions
             Card(
+              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -356,17 +433,22 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Instructions',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       '1. Generate or import your sync key (Settings > Key Management)\n'
                       '2. Set up your sync server on your VPS\n'
                       '3. Enter the server URL above\n'
                       '4. Tap "Configure" to register this key with the server\n'
                       '5. Use "Sync Now" to sync your notes\n\n'
                       'Note: Only notes within the same key group are synced. Share your private key securely with other devices to sync with them.',
-                      style: TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -397,7 +479,12 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.inversePrimary,
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(

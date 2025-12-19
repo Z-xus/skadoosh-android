@@ -303,14 +303,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                               onPressed: _exportKey,
                               icon: const Icon(Icons.download),
                               label: const Text('Export Private Key'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.secondary,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary,
-                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -319,14 +311,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                               onPressed: _exportPublicKey,
                               icon: const Icon(Icons.share),
                               label: const Text('Share Public Key'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.secondary,
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary,
-                              ),
                             ),
                           ),
                         ],
@@ -340,7 +324,7 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                       const SizedBox(height: 8),
                       const Text(
                         'Generate a new key or import an existing one to get started.',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        style: TextStyle(fontSize: 14),
                       ),
                     ],
                   ],
@@ -360,46 +344,16 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                   children: [
                     Text(
                       'Generate New Key',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _groupNameController,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Sync Group Name',
                         hintText: 'e.g., family-notes, work-team',
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                         helperText: 'Choose a unique name for your sync group',
-                        labelStyle: TextStyle(
-                          color: Theme.of(context).colorScheme.inversePrimary,
-                        ),
-                        hintStyle: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary.withValues(alpha: 0.6),
-                        ),
-                        helperStyle: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary.withValues(alpha: 0.7),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.inversePrimary.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.inversePrimary,
-                          ),
-                        ),
                       ),
                       enabled: !_isLoading,
                     ),
@@ -418,14 +372,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                               )
                             : const Icon(Icons.key),
                         label: const Text('Generate New Key Pair'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary,
-                        ),
                       ),
                     ),
                   ],
@@ -437,7 +383,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
 
             // Import Existing Key
             Card(
-              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -445,47 +390,17 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                   children: [
                     Text(
                       'Import Existing Key',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _importKeyController,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Private Key Data',
                         hintText: 'Paste exported key data here',
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                         helperText:
                             'Paste the exported key from another device',
-                        labelStyle: TextStyle(
-                          color: Theme.of(context).colorScheme.inversePrimary,
-                        ),
-                        hintStyle: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary.withValues(alpha: 0.6),
-                        ),
-                        helperStyle: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary.withValues(alpha: 0.7),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.inversePrimary.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.inversePrimary,
-                          ),
-                        ),
                       ),
                       maxLines: 3,
                       enabled: !_isLoading,
@@ -497,14 +412,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                         onPressed: _isLoading ? null : _importKey,
                         icon: const Icon(Icons.upload),
                         label: const Text('Import Key'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary,
-                        ),
                       ),
                     ),
                   ],
@@ -516,7 +423,6 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
 
             // Instructions
             Card(
-              color: Theme.of(context).colorScheme.primary,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -524,21 +430,16 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                   children: [
                     Text(
                       'How Key-Based Sync Works',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    Text(
+                    const Text(
                       '🔑 Generate Keys: Create a new RSA key pair for secure authentication\n\n'
                       '👥 Sync Groups: Choose a group name to sync with specific people\n\n'
                       '📤 Share: Export your private key to sync on multiple devices\n\n'
                       '🔐 Security: Private keys never leave your devices, ensuring maximum security\n\n'
                       '🎯 Isolation: Different groups are completely isolated from each other',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                      style: TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
@@ -554,13 +455,7 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                 ),
-                child: Text(
-                  _message!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.inversePrimary,
-                  ),
-                ),
+                child: Text(_message!, style: const TextStyle(fontSize: 14)),
               ),
             ],
           ],
@@ -575,12 +470,7 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.inversePrimary,
-            ),
-          ),
+          Text(label),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
