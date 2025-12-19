@@ -41,6 +41,12 @@ dependencies:
   google_fonts: ^6.3.3
   popover: ^0.4.0
   appflowy_editor: ^6.2.0
+  http: ^1.1.0
+  device_info_plus: ^11.5.0
+  shared_preferences: ^2.3.2
+  pointycastle: ^3.9.1
+  asn1lib: ^1.5.5
+  crypto: ^3.0.5
 
 
 
