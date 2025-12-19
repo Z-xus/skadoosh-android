@@ -267,13 +267,51 @@ class KeyBasedSyncService {
         final serverId = change['id'];
         final title = change['title'];
         final eventType = change['event_type'];
+        final eventTime = DateTime.parse(change['event_time']);
+
+        print(
+          'Processing change: $eventType for server ID $serverId, title: "$title"',
+        );
 
         if (eventType == 'create') {
-          // Check if we already have this note
-          final existingNote = _noteDatabase.currentNotes
+          // Check multiple ways to avoid duplicates:
+          // 1. Check by server ID
+          // 2. Check by title and approximate time (for notes created locally that might have been pushed)
+
+          var existingNote = _noteDatabase.currentNotes
               .where((n) => n.serverId == serverId)
               .firstOrNull;
 
+          // If not found by server ID, check by title and timing to avoid duplicates
+          // from our own local notes that were just pushed
+          if (existingNote == null) {
+            final recentNotes = _noteDatabase.currentNotes
+                .where(
+                  (n) =>
+                      n.title == title &&
+                      n.serverId == null && // Local note without server ID
+                      n.createdAt != null &&
+                      eventTime.difference(n.createdAt!).abs().inMinutes <
+                          5, // Within 5 minutes
+                )
+                .toList();
+
+            if (recentNotes.isNotEmpty) {
+              // This is likely our own note that was just pushed, update it with server ID
+              existingNote = recentNotes.first;
+              await _noteDatabase.updateSyncStatus(
+                existingNote.id,
+                serverId: serverId,
+                lastSyncedAt: DateTime.now(),
+                needsSync: false,
+              );
+              print('Updated local note with server ID: $serverId');
+              pulledNotes++;
+              continue;
+            }
+          }
+
+          // If still no match, create a new note (genuine remote note)
           if (existingNote == null) {
             await _noteDatabase.addNote(title);
             // Update the created note with server ID
@@ -284,6 +322,7 @@ class KeyBasedSyncService {
               lastSyncedAt: DateTime.now(),
               needsSync: false,
             );
+            print('Created new note from remote: $serverId');
             pulledNotes++;
           }
         } else if (eventType == 'update') {
@@ -293,13 +332,20 @@ class KeyBasedSyncService {
               .firstOrNull;
 
           if (existingNote != null) {
-            await _noteDatabase.updateNote(existingNote.id, title);
-            await _noteDatabase.updateSyncStatus(
-              existingNote.id,
-              lastSyncedAt: DateTime.now(),
-              needsSync: false,
-            );
-            pulledNotes++;
+            // Only update if the remote version is newer
+            if (existingNote.lastSyncedAt == null ||
+                eventTime.isAfter(existingNote.lastSyncedAt!)) {
+              await _noteDatabase.updateNote(existingNote.id, title);
+              await _noteDatabase.updateSyncStatus(
+                existingNote.id,
+                lastSyncedAt: DateTime.now(),
+                needsSync: false,
+              );
+              print('Updated existing note: $serverId');
+              pulledNotes++;
+            } else {
+              print('Skipped outdated remote update for: $serverId');
+            }
           }
         }
       }

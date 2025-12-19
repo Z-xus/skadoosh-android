@@ -64,9 +64,6 @@ class CryptoUtils {
       final modulus = _bytesToBigInt(
         base64.decode(keyData['modulus'] as String),
       );
-      final exponent = _bytesToBigInt(
-        base64.decode(keyData['exponent'] as String),
-      );
       final privateExponent = _bytesToBigInt(
         base64.decode(keyData['privateExponent'] as String),
       );
@@ -153,12 +150,6 @@ class CryptoUtils {
       result = (result << 8) + BigInt.from(bytes[i]);
     }
     return result;
-  }
-
-  // Format base64 string for PEM
-  static String _formatBase64(String base64String) {
-    final regex = RegExp('.{1,64}');
-    return regex.allMatches(base64String).map((m) => m.group(0)).join('\n');
   }
 }
 
