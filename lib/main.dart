@@ -8,11 +8,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NoteDatabase.initialize();
 
+  // Initialize theme provider and load saved theme
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => NoteDatabase()),
-        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
       child: const MyApp(),
     ),

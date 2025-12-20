@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/components/drawer.dart';
 import 'package:skadoosh_app/components/note_tile.dart';
@@ -90,8 +89,8 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  void deleteNote(int id) {
-    context.read<NoteDatabase>().deleteNote(id);
+  void moveNoteToTrash(int id) {
+    context.read<NoteDatabase>().moveToTrash(id);
   }
 
   @override
@@ -149,8 +148,9 @@ class _NotesPageState extends State<NotesPage> {
               padding: const EdgeInsets.only(left: 25.0),
               child: Text(
                 "Notes",
-                style: GoogleFonts.dmSerifText(
+                style: TextStyle(
                   fontSize: 48,
+                  fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.inversePrimary,
                 ),
               ),
@@ -232,10 +232,9 @@ class _NotesPageState extends State<NotesPage> {
                         final note = notes[index];
 
                         return NoteTile(
-                          text: note.title,
-                          note: note, // Pass the note object for sync status
+                          note: note,
                           onEditPressed: () => updateNote(note),
-                          onDeletePressed: () => deleteNote(note.id),
+                          onDeletePressed: () => moveNoteToTrash(note.id),
                         );
                       },
                     ),

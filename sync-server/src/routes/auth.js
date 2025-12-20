@@ -41,24 +41,26 @@ router.post('/join-group', async (req, res) => {
         groupId = groupResult.rows[0].id;
       }
 
-      // Check if this key is already registered
-      const keyCheck = await client.query(
-        'SELECT id FROM public_keys WHERE key_fingerprint = $1',
-        [fingerprint]
+      // Check if this key + device combination is already registered
+      const keyDeviceCheck = await client.query(
+        'SELECT id FROM public_keys WHERE key_fingerprint = $1 AND device_id = $2',
+        [fingerprint, deviceId]
       );
 
-      if (keyCheck.rows.length > 0) {
-        // Update existing key
+      if (keyDeviceCheck.rows.length > 0) {
+        // Update existing key-device combination
         await client.query(
-          'UPDATE public_keys SET last_used = NOW(), device_name = COALESCE($2, device_name) WHERE key_fingerprint = $1',
-          [fingerprint, deviceName]
+          'UPDATE public_keys SET last_used = NOW(), device_name = COALESCE($3, device_name) WHERE key_fingerprint = $1 AND device_id = $2',
+          [fingerprint, deviceId, deviceName]
         );
+        console.log(`Updated existing key-device: ${fingerprint} + ${deviceId}`);
       } else {
-        // Register new public key
+        // Register new device with this key
         await client.query(
           'INSERT INTO public_keys (sync_group_id, public_key, key_fingerprint, device_id, device_name) VALUES ($1, $2, $3, $4, $5)',
           [groupId, publicKey, fingerprint, deviceId, deviceName]
         );
+        console.log(`Registered new device: ${deviceId} with key: ${fingerprint}`);
       }
 
       await client.query('COMMIT');
@@ -79,27 +81,36 @@ router.post('/join-group', async (req, res) => {
 
   } catch (error) {
     console.error('Join group error:', error);
-    res.status(500).json({ error: 'Failed to join sync group' });
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint
+    });
+    res.status(500).json({ 
+      error: 'Failed to join sync group',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
 // Authenticate with challenge-response
 router.post('/challenge', async (req, res) => {
   try {
-    const { fingerprint } = req.body;
+    const { fingerprint, deviceId } = req.body;
     
-    if (!fingerprint) {
-      return res.status(400).json({ error: 'Key fingerprint is required' });
+    if (!fingerprint || !deviceId) {
+      return res.status(400).json({ error: 'Key fingerprint and device ID are required' });
     }
 
-    // Check if key exists
+    // Check if key-device combination exists
     const keyResult = await pool.query(
-      'SELECT public_key, sync_group_id FROM public_keys WHERE key_fingerprint = $1',
-      [fingerprint]
+      'SELECT public_key, sync_group_id FROM public_keys WHERE key_fingerprint = $1 AND device_id = $2',
+      [fingerprint, deviceId]
     );
 
     if (keyResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Key not found' });
+      return res.status(401).json({ error: 'Key-device combination not found' });
     }
 
     // Generate challenge

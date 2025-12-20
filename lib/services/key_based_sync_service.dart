@@ -100,7 +100,7 @@ class KeyBasedSyncService {
     final challengeResponse = await http.post(
       Uri.parse('$_baseUrl/api/auth/challenge'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'fingerprint': _fingerprint}),
+      body: jsonEncode({'fingerprint': _fingerprint, 'deviceId': _deviceId}),
     );
 
     if (challengeResponse.statusCode != 200) {
@@ -122,6 +122,7 @@ class KeyBasedSyncService {
     return {
       'Content-Type': 'application/json',
       'key-fingerprint': _fingerprint!,
+      'device-id': _deviceId!,
       'challenge': challenge,
       'signature': signature,
     };
@@ -136,8 +137,16 @@ class KeyBasedSyncService {
 
   // Perform full sync
   Future<SyncResult> sync() async {
-    print('Starting key-based sync process...');
+    print('\n=== Starting Key-Based Sync ===');
     print('Is configured: $isConfigured');
+    print('Local notes before sync: ${_noteDatabase.currentNotes.length}');
+
+    // Print local notes status
+    for (final note in _noteDatabase.currentNotes) {
+      print(
+        'Local note: ${note.id} | serverId: ${note.serverId} | title: "${note.title}" | needsSync: ${note.needsSync}',
+      );
+    }
 
     if (!isConfigured) {
       throw Exception(
@@ -147,16 +156,25 @@ class KeyBasedSyncService {
 
     try {
       // Step 1: Push local changes
+      print('\n--- Step 1: Pushing local changes ---');
       final pushResult = await _pushLocalChanges();
 
       // Step 2: Pull remote changes
+      print('\n--- Step 2: Pulling remote changes ---');
       final pullResult = await _pullRemoteChanges();
 
-      // Step 3: Update last sync time
+      // Step 3: Update last sync time with server timestamp
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+      final timestampToStore =
+          pullResult.serverTimestamp ?? DateTime.now().toIso8601String();
+      await prefs.setString(_lastSyncKey, timestampToStore);
 
+      print('Updated last sync timestamp to: $timestampToStore');
+
+      print('\nLocal notes after sync: ${_noteDatabase.currentNotes.length}');
       print('Key-based sync completed successfully');
+      print('=== Sync Complete ===\n');
+
       return SyncResult(
         success: true,
         pushedNotes: pushResult.pushedNotes,
@@ -186,10 +204,11 @@ class KeyBasedSyncService {
         'localId': note.id,
         'serverId': note.serverId,
         'title': note.title,
-        'content': '', // Add content field when you extend the Note model
+        'content': note.body, // Use the body field
         'eventType': note.serverId == null ? 'create' : 'update',
         'createdAt': note.createdAt?.toIso8601String(),
         'updatedAt': note.updatedAt?.toIso8601String(),
+        'isDeleted': note.isDeleted, // Include delete status for trash sync
       };
     }).toList();
 
@@ -265,7 +284,8 @@ class KeyBasedSyncService {
 
       for (final change in changes) {
         final serverId = change['id'];
-        final title = change['title'];
+        final title = change['title'] ?? '';
+        final body = change['content'] ?? '';
         final eventType = change['event_type'];
         final eventTime = DateTime.parse(change['event_time']);
 
@@ -273,6 +293,7 @@ class KeyBasedSyncService {
           'Processing change: $eventType for server ID $serverId, title: "$title"',
         );
 
+        // Only handle create and update events, ignore delete events
         if (eventType == 'create') {
           // Check multiple ways to avoid duplicates:
           // 1. Check by server ID
@@ -288,11 +309,12 @@ class KeyBasedSyncService {
             final recentNotes = _noteDatabase.currentNotes
                 .where(
                   (n) =>
-                      n.title == title &&
+                      n.title.trim() == title.trim() && // Match title
+                      n.body.trim() == body.trim() && // Also match body content
                       n.serverId == null && // Local note without server ID
                       n.createdAt != null &&
                       eventTime.difference(n.createdAt!).abs().inMinutes <
-                          5, // Within 5 minutes
+                          10, // Within 10 minutes for better matching
                 )
                 .toList();
 
@@ -313,16 +335,19 @@ class KeyBasedSyncService {
 
           // If still no match, create a new note (genuine remote note)
           if (existingNote == null) {
-            await _noteDatabase.addNote(title);
-            // Update the created note with server ID
-            final newNote = _noteDatabase.currentNotes.last;
+            // Create note with explicit needsSync = false since it's from server
+            final noteId = await _noteDatabase.addNoteWithId(
+              title,
+              body: body,
+              needsSync: false,
+            );
             await _noteDatabase.updateSyncStatus(
-              newNote.id,
+              noteId,
               serverId: serverId,
               lastSyncedAt: DateTime.now(),
               needsSync: false,
             );
-            print('Created new note from remote: $serverId');
+            print('Created new note from remote: $serverId (ID: $noteId)');
             pulledNotes++;
           }
         } else if (eventType == 'update') {
@@ -335,7 +360,11 @@ class KeyBasedSyncService {
             // Only update if the remote version is newer
             if (existingNote.lastSyncedAt == null ||
                 eventTime.isAfter(existingNote.lastSyncedAt!)) {
-              await _noteDatabase.updateNote(existingNote.id, title);
+              await _noteDatabase.updateNoteFromSync(
+                existingNote.id,
+                title,
+                body: body,
+              );
               await _noteDatabase.updateSyncStatus(
                 existingNote.id,
                 lastSyncedAt: DateTime.now(),
@@ -346,12 +375,44 @@ class KeyBasedSyncService {
             } else {
               print('Skipped outdated remote update for: $serverId');
             }
+          } else {
+            // If we get an update for a note we don't have, treat it as a create
+            print(
+              'Received update for unknown note $serverId, treating as create',
+            );
+            await _noteDatabase.addNote(title, body: body);
+            final newNote = _noteDatabase.currentNotes.last;
+            await _noteDatabase.updateSyncStatus(
+              newNote.id,
+              serverId: serverId,
+              lastSyncedAt: DateTime.now(),
+              needsSync: false,
+            );
+            pulledNotes++;
+          }
+        } else if (eventType == 'delete') {
+          // Handle note deletion
+          final existingNote = _noteDatabase.currentNotes
+              .where((n) => n.serverId == serverId)
+              .firstOrNull;
+
+          if (existingNote != null) {
+            await _noteDatabase.moveToTrash(existingNote.id);
+            print('Deleted note from remote: $serverId');
+            pulledNotes++;
           }
         }
       }
 
       print('Pulled $pulledNotes changes successfully');
-      return PullResult(pulledNotes: pulledNotes);
+
+      // Extract server timestamp from response for next sync
+      final serverTimestamp = data['timestamp'] as String?;
+
+      return PullResult(
+        pulledNotes: pulledNotes,
+        serverTimestamp: serverTimestamp,
+      );
     } else {
       throw Exception(
         'Failed to pull changes: ${response.statusCode} - ${response.body}',
@@ -379,6 +440,13 @@ class KeyBasedSyncService {
       print('Connection test failed: $e');
       return false;
     }
+  }
+
+  // Clear sync timestamp for debugging
+  Future<void> clearSyncTimestamp() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastSyncKey);
+    print('Cleared sync timestamp - next sync will fetch all changes');
   }
 
   // Get sync status
@@ -425,8 +493,9 @@ class PushResult {
 
 class PullResult {
   final int pulledNotes;
+  final String? serverTimestamp;
 
-  PullResult({required this.pulledNotes});
+  PullResult({required this.pulledNotes, this.serverTimestamp});
 }
 
 class SyncStatus {

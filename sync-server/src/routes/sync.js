@@ -10,22 +10,23 @@ const verifyKeyAuth = async (req, res, next) => {
     const fingerprint = req.headers['key-fingerprint'];
     const challenge = req.headers['challenge'];
     const signature = req.headers['signature'];
+    const clientDeviceId = req.headers['device-id'];
     
-    if (!fingerprint || !challenge || !signature) {
+    if (!fingerprint || !challenge || !signature || !clientDeviceId) {
       return res.status(401).json({ 
         error: 'Key authentication required',
-        required_headers: ['key-fingerprint', 'challenge', 'signature']
+        required_headers: ['key-fingerprint', 'device-id', 'challenge', 'signature']
       });
     }
 
-    // Get public key and group info
+    // Get public key and group info for the specific device
     const keyResult = await pool.query(
-      'SELECT public_key, sync_group_id, device_id FROM public_keys WHERE key_fingerprint = $1',
-      [fingerprint]
+      'SELECT public_key, sync_group_id, device_id, device_name FROM public_keys WHERE key_fingerprint = $1 AND device_id = $2',
+      [fingerprint, clientDeviceId]
     );
 
     if (keyResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Key not found' });
+      return res.status(401).json({ error: 'Key-device combination not found' });
     }
 
     const publicKey = keyResult.rows[0].public_key;
@@ -65,24 +66,32 @@ router.get('/changes', verifyKeyAuth, async (req, res) => {
     const groupId = req.syncGroupId;
     const deviceId = req.deviceId;
 
+    console.log(`🔍 Getting changes for device ${deviceId} since: ${since || 'beginning'}`);
+
     let query = `
       SELECT n.*, se.event_type, se.created_at as event_time
       FROM notes n
       JOIN sync_events se ON n.id = se.note_id
-      WHERE n.sync_group_id = $1
+      WHERE n.sync_group_id = $1 AND se.device_id != $2
     `;
-    const params = [groupId];
+    const params = [groupId, deviceId];
 
     if (since) {
-      query += ` AND se.created_at > $2`;
+      query += ` AND se.created_at > $3`;
       params.push(since);
+      console.log(`🔍 Filtering events after: ${since}`);
     }
 
     query += ` ORDER BY se.created_at ASC`;
 
+    console.log(`🔍 Running query with params: ${JSON.stringify(params)}`);
     const result = await pool.query(query, params);
 
-    console.log(`📥 Returning ${result.rows.length} changes for group ${groupId}`);
+    console.log(`📥 Found ${result.rows.length} total changes`);
+    if (result.rows.length > 0) {
+      console.log(`📥 Sample change: ${result.rows[0].title} from ${result.rows[0].device_id} at ${result.rows[0].event_time}`);
+    }
+    console.log(`📥 Returning ${result.rows.length} changes for group ${groupId} (excluding device ${deviceId})`);
     
     res.json({
       changes: result.rows,

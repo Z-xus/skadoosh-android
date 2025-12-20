@@ -33,17 +33,19 @@ class NoteDatabase extends ChangeNotifier {
     return 'unknown_${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  // create
-  Future<void> addNote(String text) async {
+  // create note with title and body
+  Future<void> addNote(String title, {String body = ''}) async {
     final deviceId = await _getDeviceId();
     final now = DateTime.now();
 
     final newNote = Note()
-      ..title = text
+      ..title = title.isNotEmpty ? title : 'Untitled'
+      ..body = body
       ..deviceId = deviceId
       ..createdAt = now
       ..updatedAt = now
-      ..needsSync = true;
+      ..needsSync = true
+      ..isDeleted = false;
 
     await isar.writeTxn(() async {
       await isar.notes.put(newNote);
@@ -52,19 +54,60 @@ class NoteDatabase extends ChangeNotifier {
     fetchNotes();
   }
 
-  // read
+  // Add note and return its ID for sync purposes
+  Future<int> addNoteWithId(
+    String title, {
+    String body = '',
+    bool needsSync = true,
+  }) async {
+    final deviceId = await _getDeviceId();
+    final now = DateTime.now();
+
+    final newNote = Note()
+      ..title = title.isNotEmpty ? title : 'Untitled'
+      ..body = body
+      ..deviceId = deviceId
+      ..createdAt = now
+      ..updatedAt = now
+      ..needsSync = needsSync
+      ..isDeleted = false;
+
+    await isar.writeTxn(() async {
+      await isar.notes.put(newNote);
+    });
+
+    fetchNotes();
+    return newNote.id;
+  }
+
+  // read - fetch all notes for now, will filter in UI
   Future<void> fetchNotes() async {
     List<Note> fetchNotes = await isar.notes.where().findAll();
     currentNotes.clear();
-    currentNotes.addAll(fetchNotes);
+    // Filter out deleted notes in the app logic for now
+    currentNotes.addAll(fetchNotes.where((note) => !note.isDeleted));
     notifyListeners();
   }
 
-  // update
-  Future<void> updateNote(int id, String newText) async {
+  // get all notes including deleted
+  Future<List<Note>> getAllNotes() async {
+    return await isar.notes.where().findAll();
+  }
+
+  // get trash notes (deleted but not permanently)
+  Future<List<Note>> getTrashNotes() async {
+    final allNotes = await isar.notes.where().findAll();
+    return allNotes
+        .where((note) => note.isDeleted && !note.shouldPermanentlyDelete)
+        .toList();
+  }
+
+  // update note with title and body
+  Future<void> updateNote(int id, String title, {String? body}) async {
     final existingNote = await isar.notes.get(id);
-    if (existingNote != null) {
-      existingNote.title = newText;
+    if (existingNote != null && !existingNote.isDeleted) {
+      existingNote.title = title.isNotEmpty ? title : 'Untitled';
+      if (body != null) existingNote.body = body;
       existingNote.updatedAt = DateTime.now();
       existingNote.needsSync = true;
 
@@ -72,6 +115,74 @@ class NoteDatabase extends ChangeNotifier {
         await isar.notes.put(existingNote);
       });
       await fetchNotes();
+    }
+  }
+
+  // Update note from sync without marking as needing sync again
+  Future<void> updateNoteFromSync(int id, String title, {String? body}) async {
+    final existingNote = await isar.notes.get(id);
+    if (existingNote != null && !existingNote.isDeleted) {
+      existingNote.title = title.isNotEmpty ? title : 'Untitled';
+      if (body != null) existingNote.body = body;
+      existingNote.updatedAt = DateTime.now();
+      // DON'T set needsSync = true since this is from server
+
+      await isar.writeTxn(() async {
+        await isar.notes.put(existingNote);
+      });
+      await fetchNotes();
+    }
+  }
+
+  // move to trash (soft delete)
+  Future<void> moveToTrash(int id) async {
+    final existingNote = await isar.notes.get(id);
+    if (existingNote != null) {
+      existingNote.isDeleted = true;
+      existingNote.deletedAt = DateTime.now();
+      existingNote.updatedAt = DateTime.now();
+      existingNote.needsSync = true;
+
+      await isar.writeTxn(() async {
+        await isar.notes.put(existingNote);
+      });
+      await fetchNotes();
+    }
+  }
+
+  // restore from trash
+  Future<void> restoreFromTrash(int id) async {
+    final existingNote = await isar.notes.get(id);
+    if (existingNote != null && existingNote.isDeleted) {
+      existingNote.isDeleted = false;
+      existingNote.deletedAt = null;
+      existingNote.updatedAt = DateTime.now();
+      existingNote.needsSync = true;
+
+      await isar.writeTxn(() async {
+        await isar.notes.put(existingNote);
+      });
+      await fetchNotes();
+    }
+  }
+
+  // permanently delete note (hard delete)
+  Future<void> permanentlyDeleteNote(int id) async {
+    await isar.writeTxn(() async {
+      await isar.notes.delete(id);
+    });
+    await fetchNotes();
+  }
+
+  // clean up old trash (30+ days)
+  Future<void> cleanUpOldTrash() async {
+    final trashNotes = await getTrashNotes();
+    final notesToDelete = trashNotes
+        .where((note) => note.shouldPermanentlyDelete)
+        .toList();
+
+    for (final note in notesToDelete) {
+      await permanentlyDeleteNote(note.id);
     }
   }
 

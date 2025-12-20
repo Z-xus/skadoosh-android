@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skadoosh_app/services/crypto_utils.dart';
 import 'package:http/http.dart' as http;
+import 'package:device_info_plus/device_info_plus.dart';
 
 class KeyManagementPage extends StatefulWidget {
   const KeyManagementPage({super.key});
@@ -59,6 +61,53 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
     await prefs.setString('user_key_pair', jsonEncode(keyPair.toMap()));
     await prefs.setString('sync_group_name', groupName);
     await prefs.setString('key_fingerprint', keyPair.fingerprint);
+  }
+
+  // Generate unique device ID for this device
+  Future<String> _generateUniqueDeviceId() async {
+    final deviceInfo = DeviceInfoPlugin();
+    String deviceId;
+
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceId = 'android_${androidInfo.id}';
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceId = 'ios_${iosInfo.identifierForVendor}';
+      } else {
+        deviceId = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+      }
+    } catch (e) {
+      // Fallback: generate a UUID-like string
+      deviceId =
+          'fallback_${DateTime.now().millisecondsSinceEpoch}_${(DateTime.now().microsecond * 1000).toRadixString(36)}';
+    }
+
+    print('Generated device ID: $deviceId');
+    return deviceId;
+  }
+
+  // Generate meaningful device name
+  Future<String> _generateDeviceName() async {
+    final deviceInfo = DeviceInfoPlugin();
+    String deviceName = 'Flutter Device';
+
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceName = '${androidInfo.brand} ${androidInfo.model}';
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceName = '${iosInfo.name} (${iosInfo.model})';
+      }
+    } catch (e) {
+      // Fallback
+      deviceName = 'Flutter Device';
+    }
+
+    print('Generated device name: $deviceName');
+    return deviceName;
   }
 
   Future<void> _generateNewKey() async {
@@ -172,21 +221,33 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
       if (_serverUrl != null) {
         try {
           await _joinSyncGroup(keyPairInfo, _groupNameController.text.trim());
+          setState(() {
+            _currentKeyPair = keyPairInfo;
+            _currentGroup = _groupNameController.text.trim();
+            _message = 'Key imported and registered with server successfully!';
+          });
         } catch (e) {
-          // Non-fatal error - key is saved locally but server registration failed
+          // Server registration failed - this is critical for sync
           print('Server registration failed: $e');
-          _showMessage(
-            'Key imported locally, but server registration failed: $e\nYou can configure the server later.',
-            isError: false,
+
+          // Remove the locally saved key since server registration failed
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('user_key_pair');
+          await prefs.remove('sync_group_name');
+          await prefs.remove('key_fingerprint');
+
+          throw Exception(
+            'Server registration failed: $e\nKey import aborted.',
           );
         }
+      } else {
+        // No server configured - save locally only
+        setState(() {
+          _currentKeyPair = keyPairInfo;
+          _currentGroup = _groupNameController.text.trim();
+          _message = 'Key imported locally (no server configured)';
+        });
       }
-
-      setState(() {
-        _currentKeyPair = keyPairInfo;
-        _currentGroup = _groupNameController.text.trim();
-        _message = 'Key imported successfully!';
-      });
 
       _importKeyController.clear();
     } catch (e) {
@@ -209,8 +270,9 @@ class _KeyManagementPageState extends State<KeyManagementPage> {
         'groupName': groupName,
         'publicKey': keyPair.publicKeyPem,
         'deviceId':
-            'flutter_device', // You might want to generate a unique device ID
-        'deviceName': 'Flutter App',
+            await _generateUniqueDeviceId(), // Generate unique device ID
+        'deviceName':
+            await _generateDeviceName(), // Generate meaningful device name
       }),
     );
 

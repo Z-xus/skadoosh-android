@@ -4,21 +4,35 @@ import 'package:skadoosh_app/components/note_settings.dart';
 import 'package:skadoosh_app/models/note.dart';
 
 class NoteTile extends StatelessWidget {
-  final String text;
   final void Function()? onEditPressed;
   final void Function()? onDeletePressed;
-  final Note? note;
+  final Note note;
 
   const NoteTile({
     super.key,
-    required this.text,
     required this.onEditPressed,
     required this.onDeletePressed,
-    this.note,
+    required this.note,
   });
+
+  String _getBodyPreview() {
+    if (note.body.isEmpty) return '';
+
+    // Remove markdown syntax for preview
+    final cleanBody = note.body
+        .replaceAll(RegExp(r'[#*_\[\]`]'), '') // Remove markdown characters
+        .replaceAll(RegExp(r'\n+'), ' ') // Replace newlines with spaces
+        .trim();
+
+    // Limit to 100 characters
+    if (cleanBody.length <= 100) return cleanBody;
+    return '${cleanBody.substring(0, 100)}...';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bodyPreview = _getBodyPreview();
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -27,11 +41,45 @@ class NoteTile extends StatelessWidget {
       ),
       margin: const EdgeInsets.only(bottom: 10, left: 25, right: 25),
       child: ListTile(
-        title: Text(text),
-        subtitle: note != null ? _buildSyncStatus(context) : null,
+        title: Text(
+          note.title.isNotEmpty ? note.title : 'Untitled',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.inversePrimary,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (bodyPreview.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                bodyPreview,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.inversePrimary.withValues(alpha: 0.7),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (_shouldShowSyncStatus()) ...[
+              const SizedBox(height: 8),
+              _buildSyncStatus(context),
+            ],
+          ],
+        ),
         trailing: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(
+              Icons.more_vert,
+              color: Theme.of(context).colorScheme.inversePrimary,
+            ),
             onPressed: () => showPopover(
               context: context,
               width: 100,
@@ -48,38 +96,35 @@ class NoteTile extends StatelessWidget {
     );
   }
 
-  Widget? _buildSyncStatus(BuildContext context) {
-    if (note == null) return null;
+  bool _shouldShowSyncStatus() {
+    final bool needsSync = note.needsSync;
+    final bool hasSyncInfo = note.serverId != null || note.lastSyncedAt != null;
+    return needsSync || hasSyncInfo;
+  }
 
-    final bool needsSync = note!.needsSync;
-    final bool hasSyncInfo =
-        note!.serverId != null || note!.lastSyncedAt != null;
+  Widget _buildSyncStatus(BuildContext context) {
+    final bool needsSync = note.needsSync;
 
-    if (!needsSync && !hasSyncInfo) return null;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4.0),
-      child: Row(
-        children: [
-          Icon(
-            needsSync ? Icons.sync_problem : Icons.sync,
-            size: 12,
+    return Row(
+      children: [
+        Icon(
+          needsSync ? Icons.sync_problem : Icons.sync,
+          size: 12,
+          color: needsSync ? Colors.orange : Colors.green,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          needsSync
+              ? 'Needs sync'
+              : note.serverId != null
+              ? 'Synced'
+              : 'Local only',
+          style: TextStyle(
+            fontSize: 10,
             color: needsSync ? Colors.orange : Colors.green,
           ),
-          const SizedBox(width: 4),
-          Text(
-            needsSync
-                ? 'Needs sync'
-                : note!.serverId != null
-                ? 'Synced'
-                : 'Local only',
-            style: TextStyle(
-              fontSize: 10,
-              color: needsSync ? Colors.orange : Colors.green,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
