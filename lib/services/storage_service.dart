@@ -71,4 +71,12 @@ class StorageService {
     final file = File(p.join(_baseDir.path, filename));
     return await file.exists();
   }
+
+  /// Get the base directory path for file watching
+  String get baseDirectoryPath {
+    if (!_initialized) {
+      throw StateError('StorageService not initialized. Call init() first.');
+    }
+    return _baseDir.path;
+  }
 }

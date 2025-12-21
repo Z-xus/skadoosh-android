@@ -47,38 +47,58 @@ const NoteSchema = CollectionSchema(
       name: r'isDeleted',
       type: IsarType.bool,
     ),
-    r'isInTrash': PropertySchema(
+    r'isDirty': PropertySchema(
       id: 6,
+      name: r'isDirty',
+      type: IsarType.bool,
+    ),
+    r'isInTrash': PropertySchema(
+      id: 7,
       name: r'isInTrash',
       type: IsarType.bool,
     ),
     r'lastSyncedAt': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'lastSyncedAt',
       type: IsarType.dateTime,
     ),
+    r'lastSyncedHash': PropertySchema(
+      id: 9,
+      name: r'lastSyncedHash',
+      type: IsarType.string,
+    ),
     r'needsSync': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'needsSync',
       type: IsarType.bool,
     ),
+    r'relativePath': PropertySchema(
+      id: 11,
+      name: r'relativePath',
+      type: IsarType.string,
+    ),
     r'serverId': PropertySchema(
-      id: 9,
+      id: 12,
       name: r'serverId',
       type: IsarType.string,
     ),
+    r'shadowContentZLib': PropertySchema(
+      id: 13,
+      name: r'shadowContentZLib',
+      type: IsarType.longList,
+    ),
     r'shouldPermanentlyDelete': PropertySchema(
-      id: 10,
+      id: 14,
       name: r'shouldPermanentlyDelete',
       type: IsarType.bool,
     ),
     r'title': PropertySchema(
-      id: 11,
+      id: 15,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 12,
+      id: 16,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -88,7 +108,21 @@ const NoteSchema = CollectionSchema(
   deserialize: _noteDeserialize,
   deserializeProp: _noteDeserializeProp,
   idName: r'id',
-  indexes: {},
+  indexes: {
+    r'relativePath': IndexSchema(
+      id: -3416132874591967176,
+      name: r'relativePath',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'relativePath',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    )
+  },
   links: {},
   embeddedSchemas: {},
   getId: _noteGetId,
@@ -112,9 +146,27 @@ int _noteEstimateSize(
     }
   }
   {
+    final value = object.lastSyncedHash;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.relativePath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.serverId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.shadowContentZLib;
+    if (value != null) {
+      bytesCount += 3 + value.length * 8;
     }
   }
   bytesCount += 3 + object.title.length * 3;
@@ -133,13 +185,17 @@ void _noteSerialize(
   writer.writeString(offsets[3], object.deviceId);
   writer.writeString(offsets[4], object.fileName);
   writer.writeBool(offsets[5], object.isDeleted);
-  writer.writeBool(offsets[6], object.isInTrash);
-  writer.writeDateTime(offsets[7], object.lastSyncedAt);
-  writer.writeBool(offsets[8], object.needsSync);
-  writer.writeString(offsets[9], object.serverId);
-  writer.writeBool(offsets[10], object.shouldPermanentlyDelete);
-  writer.writeString(offsets[11], object.title);
-  writer.writeDateTime(offsets[12], object.updatedAt);
+  writer.writeBool(offsets[6], object.isDirty);
+  writer.writeBool(offsets[7], object.isInTrash);
+  writer.writeDateTime(offsets[8], object.lastSyncedAt);
+  writer.writeString(offsets[9], object.lastSyncedHash);
+  writer.writeBool(offsets[10], object.needsSync);
+  writer.writeString(offsets[11], object.relativePath);
+  writer.writeString(offsets[12], object.serverId);
+  writer.writeLongList(offsets[13], object.shadowContentZLib);
+  writer.writeBool(offsets[14], object.shouldPermanentlyDelete);
+  writer.writeString(offsets[15], object.title);
+  writer.writeDateTime(offsets[16], object.updatedAt);
 }
 
 Note _noteDeserialize(
@@ -156,11 +212,15 @@ Note _noteDeserialize(
   object.fileName = reader.readStringOrNull(offsets[4]);
   object.id = id;
   object.isDeleted = reader.readBool(offsets[5]);
-  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[7]);
-  object.needsSync = reader.readBool(offsets[8]);
-  object.serverId = reader.readStringOrNull(offsets[9]);
-  object.title = reader.readString(offsets[11]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[12]);
+  object.isDirty = reader.readBool(offsets[6]);
+  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[8]);
+  object.lastSyncedHash = reader.readStringOrNull(offsets[9]);
+  object.needsSync = reader.readBool(offsets[10]);
+  object.relativePath = reader.readStringOrNull(offsets[11]);
+  object.serverId = reader.readStringOrNull(offsets[12]);
+  object.shadowContentZLib = reader.readLongList(offsets[13]);
+  object.title = reader.readString(offsets[15]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[16]);
   return object;
 }
 
@@ -186,16 +246,24 @@ P _noteDeserializeProp<P>(
     case 6:
       return (reader.readBool(offset)) as P;
     case 7:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 8:
       return (reader.readBool(offset)) as P;
+    case 8:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 9:
       return (reader.readStringOrNull(offset)) as P;
     case 10:
       return (reader.readBool(offset)) as P;
     case 11:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readLongList(offset)) as P;
+    case 14:
+      return (reader.readBool(offset)) as P;
+    case 15:
+      return (reader.readString(offset)) as P;
+    case 16:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -285,6 +353,71 @@ extension NoteQueryWhere on QueryBuilder<Note, Note, QWhereClause> {
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> relativePathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'relativePath',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> relativePathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'relativePath',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> relativePathEqualTo(
+      String? relativePath) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'relativePath',
+        value: [relativePath],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> relativePathNotEqualTo(
+      String? relativePath) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'relativePath',
+              lower: [],
+              upper: [relativePath],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'relativePath',
+              lower: [relativePath],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'relativePath',
+              lower: [relativePath],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'relativePath',
+              lower: [],
+              upper: [relativePath],
+              includeUpper: false,
+            ));
+      }
     });
   }
 }
@@ -891,6 +1024,15 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> isDirtyEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isDirty',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> isInTrashEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -969,11 +1111,303 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'lastSyncedHash',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'lastSyncedHash',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastSyncedHash',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'lastSyncedHash',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'lastSyncedHash',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastSyncedHash',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> lastSyncedHashIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'lastSyncedHash',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> needsSyncEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'needsSync',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'relativePath',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'relativePath',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'relativePath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'relativePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'relativePath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'relativePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> relativePathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'relativePath',
+        value: '',
       ));
     });
   }
@@ -1120,6 +1554,166 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
         property: r'serverId',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> shadowContentZLibIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'shadowContentZLib',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> shadowContentZLibIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'shadowContentZLib',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'shadowContentZLib',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'shadowContentZLib',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'shadowContentZLib',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'shadowContentZLib',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> shadowContentZLibIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      shadowContentZLibLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'shadowContentZLib',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -1408,6 +2002,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsDirty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDirty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsDirtyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDirty', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByIsInTrash() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isInTrash', Sort.asc);
@@ -1432,6 +2038,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> sortByLastSyncedHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastSyncedHash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByLastSyncedHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastSyncedHash', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByNeedsSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.asc);
@@ -1441,6 +2059,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
   QueryBuilder<Note, Note, QAfterSortBy> sortByNeedsSyncDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByRelativePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'relativePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByRelativePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'relativePath', Sort.desc);
     });
   }
 
@@ -1578,6 +2208,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsDirty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDirty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsDirtyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isDirty', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenByIsInTrash() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isInTrash', Sort.asc);
@@ -1602,6 +2244,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> thenByLastSyncedHash() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastSyncedHash', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByLastSyncedHashDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastSyncedHash', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenByNeedsSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.asc);
@@ -1611,6 +2265,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByNeedsSyncDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByRelativePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'relativePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByRelativePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'relativePath', Sort.desc);
     });
   }
 
@@ -1703,6 +2369,12 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByIsDirty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isDirty');
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByIsInTrash() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isInTrash');
@@ -1715,9 +2387,24 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByLastSyncedHash(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastSyncedHash',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByNeedsSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'needsSync');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByRelativePath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'relativePath', caseSensitive: caseSensitive);
     });
   }
 
@@ -1725,6 +2412,12 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'serverId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByShadowContentZLib() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'shadowContentZLib');
     });
   }
 
@@ -1791,6 +2484,12 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, bool, QQueryOperations> isDirtyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isDirty');
+    });
+  }
+
   QueryBuilder<Note, bool, QQueryOperations> isInTrashProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isInTrash');
@@ -1803,15 +2502,33 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, String?, QQueryOperations> lastSyncedHashProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastSyncedHash');
+    });
+  }
+
   QueryBuilder<Note, bool, QQueryOperations> needsSyncProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'needsSync');
     });
   }
 
+  QueryBuilder<Note, String?, QQueryOperations> relativePathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'relativePath');
+    });
+  }
+
   QueryBuilder<Note, String?, QQueryOperations> serverIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'serverId');
+    });
+  }
+
+  QueryBuilder<Note, List<int>?, QQueryOperations> shadowContentZLibProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'shadowContentZLib');
     });
   }
 

@@ -4,13 +4,20 @@ import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
 import 'package:skadoosh_app/services/device_pairing_service.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
+import 'package:skadoosh_app/services/file_watcher_service.dart';
 import 'pages/notes_page.dart';
 import 'pages/user_onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NoteDatabase.initialize();
-  await StorageService().init();
+
+  // Initialize StorageService
+  final storageService = StorageService();
+  await storageService.init();
+
+  // Initialize FileWatcherService after StorageService is ready
+  await FileWatcherService().init(storageService.baseDirectoryPath);
 
   // Initialize theme provider and load saved theme
   final themeProvider = ThemeProvider();
