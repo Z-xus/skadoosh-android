@@ -10,6 +10,7 @@
     "migrate": "node src/database/migrate.js",
     "migrate:reset": "node src/database/migrate.js reset",
     "migrate:device-ids": "node src/database/migrate-device-ids.js",
+    "migrate:device-pairing": "node src/database/migrate-device-pairing.js",
     "check-schema": "node src/database/check-schema.js",
     "test-schema": "node src/database/test-schema.js"
   },

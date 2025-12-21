@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/key_based_sync_service.dart';
-import 'package:skadoosh_app/pages/key_management_page.dart';
+import 'package:skadoosh_app/pages/device_management_page.dart';
 
 class SyncSettingsPage extends StatefulWidget {
   const SyncSettingsPage({super.key});
@@ -62,7 +62,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
       String errorMsg = e.toString();
       if (errorMsg.contains('Key pair not configured')) {
         errorMsg =
-            'Please generate or import a sync key first. Go to Settings > Key Management.';
+            'Please set up device pairing first. Go to Settings > Device Management.';
       }
       _showMessage('Failed to configure sync server: $errorMsg', isError: true);
     } finally {
@@ -152,7 +152,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Key Management
+            // Device Management
             Card(
               color: Theme.of(context).colorScheme.primary,
               child: Padding(
@@ -161,14 +161,14 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Key Management',
+                      'Device Management',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Theme.of(context).colorScheme.inversePrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Before syncing, you need to generate or import a sync key. This key determines which notes you can sync with other devices.',
+                      'Before syncing, you need to set up your device pairing. This determines which notes you can sync with other devices.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.inversePrimary,
@@ -182,10 +182,11 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const KeyManagementPage(),
+                              builder: (context) =>
+                                  const DeviceManagementPage(),
                             ),
                           );
-                          // Refresh sync service after returning from key management
+                          // Refresh sync service after returning from device management
                           await _initializeSyncService();
                         },
                         style: ElevatedButton.styleFrom(
@@ -196,8 +197,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                             context,
                           ).colorScheme.inversePrimary,
                         ),
-                        icon: const Icon(Icons.vpn_key),
-                        label: const Text('Manage Sync Keys'),
+                        icon: const Icon(Icons.devices),
+                        label: const Text('Manage Devices'),
                       ),
                     ),
                   ],
@@ -439,12 +440,12 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '1. Generate or import your sync key (Settings > Key Management)\n'
+                      '1. Set up device pairing (Settings > Device Management)\n'
                       '2. Set up your sync server on your VPS\n'
                       '3. Enter the server URL above\n'
-                      '4. Tap "Configure" to register this key with the server\n'
+                      '4. Tap "Configure" to register this device with the server\n'
                       '5. Use "Sync Now" to sync your notes\n\n'
-                      'Note: Only notes within the same key group are synced. Share your private key securely with other devices to sync with them.',
+                      'Note: Only notes within the same device group are synced. Pair with other devices to sync with them.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.inversePrimary,
@@ -525,10 +526,10 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
       return 'Server URL not configured';
     }
     if (_syncStatus!.keyFingerprint == null) {
-      return 'No sync key available. Go to Key Management to generate or import one.';
+      return 'No sync key available. Go to Device Management to set up pairing.';
     }
     if (_syncStatus!.groupName == null) {
-      return 'No sync group configured. Generate a new key or import an existing one.';
+      return 'No sync group configured. Set up device pairing or pair with existing devices.';
     }
     return 'Configuration incomplete - check all settings above';
   }

@@ -29,20 +29,61 @@ class KeyBasedSyncService {
     _groupName = prefs.getString(_groupNameKey);
     _fingerprint = prefs.getString(_fingerprintKey);
 
-    final keyData = prefs.getString(_keyPairKey);
-    if (keyData != null) {
+    // Try to load keys from device pairing service first (new format)
+    final publicKeyJson = prefs.getString('user_public_key');
+    final privateKeyJson = prefs.getString('user_private_key');
+
+    if (publicKeyJson != null && privateKeyJson != null) {
       try {
-        print('Loading key data: ${keyData.length} characters');
-        final keyMap = jsonDecode(keyData) as Map<String, dynamic>;
-        print('Key map keys: ${keyMap.keys.toList()}');
-        _keyPair = KeyPairInfo.fromMap(keyMap);
-        print('Key pair loaded successfully');
+        print('Loading keys from device pairing service...');
+
+        // Parse private key from JSON
+        final privateKey = CryptoUtils.parsePrivateKeyFromJson(privateKeyJson);
+
+        // Generate fingerprint if not stored
+        if (_fingerprint == null) {
+          _fingerprint = CryptoUtils.getFingerprint(publicKeyJson);
+          await prefs.setString(_fingerprintKey, _fingerprint!);
+        }
+
+        // Create KeyPairInfo with the JSON keys
+        _keyPair = KeyPairInfo(
+          publicKeyPem: publicKeyJson,
+          privateKeyPem: privateKeyJson,
+          fingerprint: _fingerprint!,
+          privateKey: privateKey,
+        );
+
+        // Generate group name from fingerprint if not stored
+        if (_groupName == null) {
+          _groupName = 'group_$_fingerprint';
+          await prefs.setString(_groupNameKey, _groupName!);
+        }
+
+        print('Keys loaded from device pairing service successfully');
+        print('Fingerprint: $_fingerprint');
+        print('Group name: $_groupName');
       } catch (e, stackTrace) {
-        print('Error loading key pair: $e');
+        print('Error loading keys from device pairing service: $e');
         print('Stack trace: $stackTrace');
       }
     } else {
-      print('No key data found in storage');
+      // Fallback to old manual key format
+      final keyData = prefs.getString(_keyPairKey);
+      if (keyData != null) {
+        try {
+          print('Loading key data: ${keyData.length} characters');
+          final keyMap = jsonDecode(keyData) as Map<String, dynamic>;
+          print('Key map keys: ${keyMap.keys.toList()}');
+          _keyPair = KeyPairInfo.fromMap(keyMap);
+          print('Key pair loaded successfully');
+        } catch (e, stackTrace) {
+          print('Error loading key pair: $e');
+          print('Stack trace: $stackTrace');
+        }
+      } else {
+        print('No key data found in storage');
+      }
     }
 
     _deviceId = await _generateDeviceId();

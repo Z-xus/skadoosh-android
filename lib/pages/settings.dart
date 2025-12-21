@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
 import 'package:skadoosh_app/pages/sync_settings_page.dart';
-import 'package:skadoosh_app/pages/key_management_page.dart';
+import 'package:skadoosh_app/pages/device_management_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -55,7 +55,7 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
 
-          // Key Management
+          // Device Management
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary,
@@ -73,14 +73,14 @@ class SettingsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Key Management",
+                      "Device Management",
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.inversePrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      "Generate or import sync keys",
+                      "Manage paired devices and sync",
                       style: TextStyle(
                         color: Theme.of(
                           context,
@@ -95,12 +95,12 @@ class SettingsPage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const KeyManagementPage(),
+                        builder: (context) => const DeviceManagementPage(),
                       ),
                     );
                   },
                   icon: Icon(
-                    Icons.key,
+                    Icons.devices,
                     color: Theme.of(context).colorScheme.inversePrimary,
                   ),
                 ),

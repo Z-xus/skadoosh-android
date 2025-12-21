@@ -7,6 +7,8 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const syncRoutes = require('./routes/sync');
+const userRoutes = require('./routes/users');
+const deviceRoutes = require('./routes/devices');
 const { initDatabase } = require('./database/init');
 
 const app = express();
@@ -40,6 +42,8 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/devices', deviceRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
