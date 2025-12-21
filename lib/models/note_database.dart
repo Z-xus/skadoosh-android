@@ -39,6 +39,7 @@ class NoteDatabase extends ChangeNotifier {
     String title, {
     String body = '',
     String? fileName,
+    String? relativePath,
   }) async {
     final deviceId = await _getDeviceId();
     final now = DateTime.now();
@@ -47,6 +48,9 @@ class NoteDatabase extends ChangeNotifier {
       ..title = title.isNotEmpty ? title : 'Untitled'
       ..body = body
       ..fileName = fileName
+      ..relativePath =
+          relativePath ??
+          fileName // Set relativePath, fallback to fileName
       ..deviceId = deviceId
       ..createdAt = now
       ..updatedAt = now
@@ -58,7 +62,7 @@ class NoteDatabase extends ChangeNotifier {
     });
 
     print(
-      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}',
+      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}, RelativePath: "${newNote.relativePath}"',
     );
     fetchNotes();
   }
@@ -68,6 +72,7 @@ class NoteDatabase extends ChangeNotifier {
     String title, {
     String body = '',
     String? fileName,
+    String? relativePath,
     bool needsSync = true,
   }) async {
     final deviceId = await _getDeviceId();
@@ -77,6 +82,9 @@ class NoteDatabase extends ChangeNotifier {
       ..title = title.isNotEmpty ? title : 'Untitled'
       ..body = body
       ..fileName = fileName
+      ..relativePath =
+          relativePath ??
+          fileName // Set relativePath, fallback to fileName
       ..deviceId = deviceId
       ..createdAt = now
       ..updatedAt = now
@@ -88,7 +96,7 @@ class NoteDatabase extends ChangeNotifier {
     });
 
     print(
-      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}',
+      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}, RelativePath: "${newNote.relativePath}"',
     );
     fetchNotes();
     return newNote.id;
@@ -122,12 +130,18 @@ class NoteDatabase extends ChangeNotifier {
     String title, {
     String? body,
     String? fileName,
+    String? relativePath,
   }) async {
     final existingNote = await isar.notes.get(id);
     if (existingNote != null && !existingNote.isDeleted) {
       existingNote.title = title.isNotEmpty ? title : 'Untitled';
       if (body != null) existingNote.body = body;
       if (fileName != null) existingNote.fileName = fileName;
+      if (relativePath != null) existingNote.relativePath = relativePath;
+      // If relativePath is not provided but fileName is, update relativePath too
+      if (relativePath == null && fileName != null) {
+        existingNote.relativePath = fileName;
+      }
       existingNote.updatedAt = DateTime.now();
       existingNote.needsSync = true;
 

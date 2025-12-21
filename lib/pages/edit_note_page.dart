@@ -83,6 +83,7 @@ class _EditNotePageState extends State<EditNotePage> {
         sanitizedTitle,
         body: '', // Body is now in file
         fileName: fileName,
+        relativePath: fileName, // CRITICAL FIX: Set relativePath!
       );
     } else {
       // Update existing note in Isar with metadata
@@ -91,6 +92,7 @@ class _EditNotePageState extends State<EditNotePage> {
         sanitizedTitle,
         body: '', // Body is now in file
         fileName: fileName,
+        relativePath: fileName, // CRITICAL FIX: Set relativePath!
       );
     }
 

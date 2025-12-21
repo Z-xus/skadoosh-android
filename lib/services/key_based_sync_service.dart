@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skadoosh_app/models/note_database.dart';
+import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/services/crypto_utils.dart';
+import 'package:skadoosh_app/services/storage_service.dart';
+import 'package:diff_match_patch/diff_match_patch.dart';
 
 class KeyBasedSyncService {
   static const String _baseUrlKey = 'sync_server_url';
@@ -19,6 +23,8 @@ class KeyBasedSyncService {
   String? _fingerprint;
   String? _deviceId;
   final NoteDatabase _noteDatabase;
+  final StorageService _storageService = StorageService();
+  final DiffMatchPatch _dmp = DiffMatchPatch();
 
   KeyBasedSyncService(this._noteDatabase);
 
@@ -228,7 +234,42 @@ class KeyBasedSyncService {
     }
   }
 
-  // Push local changes to server
+  // Helper method to get effective file path (relativePath or fileName fallback)
+  String? _getEffectiveFilePath(Note note) {
+    return note.relativePath ?? note.fileName;
+  }
+
+  // Helper method to get shadow content from note
+  String? _getShadowContent(Note note) {
+    return note.getShadowContent();
+  }
+
+  // Helper method to update shadow cache for a note
+  Future<void> _updateShadowCache(Note note, String content) async {
+    note.updateShadowCache(content);
+    note.isDirty = false;
+
+    // Save the updated note to database
+    await NoteDatabase.isar.writeTxn(() async {
+      await NoteDatabase.isar.notes.put(note);
+    });
+    await _noteDatabase.fetchNotes(); // Refresh the notes list
+  }
+
+  // Helper method to force full sync by clearing shadow cache
+  Future<void> _clearShadowCache(Note note) async {
+    print('Clearing shadow cache for note ${note.id} - forcing full sync');
+    note.shadowContentZLib = null;
+    note.lastSyncedHash = null;
+
+    // Save the updated note to database
+    await NoteDatabase.isar.writeTxn(() async {
+      await NoteDatabase.isar.notes.put(note);
+    });
+    await _noteDatabase.fetchNotes(); // Refresh the notes list
+  }
+
+  // Push local changes to server with differential sync
   Future<PushResult> _pushLocalChanges() async {
     final notesToSync = _noteDatabase.currentNotes
         .where((note) => note.needsSync)
@@ -240,20 +281,110 @@ class KeyBasedSyncService {
       return PushResult(pushedNotes: 0);
     }
 
-    final notesData = notesToSync.map((note) {
-      return {
-        'localId': note.id,
-        'serverId': note.serverId,
-        'title': note.title,
-        'content': note.body, // Use the body field
-        'eventType': note.serverId == null ? 'create' : 'update',
-        'createdAt': note.createdAt?.toIso8601String(),
-        'updatedAt': note.updatedAt?.toIso8601String(),
-        'isDeleted': note.isDeleted, // Include delete status for trash sync
-      };
-    }).toList();
+    final List<Map<String, dynamic>> notesData = [];
 
-    print('Pushing notes data: $notesData');
+    for (final note in notesToSync) {
+      try {
+        print('🔄 Processing note ${note.id} (${note.title})');
+
+        // Step 1: Read current content from file
+        String currentContent = '';
+        final effectiveFilePath = _getEffectiveFilePath(note);
+
+        if (effectiveFilePath != null) {
+          currentContent = await _storageService.readNote(effectiveFilePath);
+          print(
+            '📖 Read ${currentContent.length} characters from $effectiveFilePath',
+          );
+
+          // If note doesn't have relativePath but has fileName, update it
+          if (note.relativePath == null && note.fileName != null) {
+            note.relativePath = note.fileName;
+            await NoteDatabase.isar.writeTxn(() async {
+              await NoteDatabase.isar.notes.put(note);
+            });
+            print(
+              'Updated note ${note.id} with relativePath: ${note.fileName}',
+            );
+          }
+        } else {
+          // Fallback to database content for legacy notes
+          currentContent = note.body;
+          print(
+            '⚠️ Using legacy database content (${currentContent.length} chars)',
+          );
+        }
+
+        // Step 2: Determine sync strategy
+        final shadowContent = _getShadowContent(note);
+        Map<String, dynamic> noteData = {
+          'localId': note.id,
+          'serverId': note.serverId,
+          'title': note.title,
+          'createdAt': note.createdAt?.toIso8601String(),
+          'updatedAt': note.updatedAt?.toIso8601String(),
+          'isDeleted': note.isDeleted,
+        };
+
+        if (shadowContent == null || shadowContent.isEmpty) {
+          // First sync or shadow cache invalid - send full content
+          print('📤 Full sync for note ${note.id} (no shadow cache)');
+          noteData.addAll({
+            'eventType': note.serverId == null ? 'create' : 'update',
+            'content': currentContent,
+          });
+        } else {
+          // Shadow cache exists - use differential sync
+          print('🔍 Differential sync for note ${note.id}');
+
+          // Generate patches
+          final patches = _dmp.patch(shadowContent, currentContent);
+
+          if (patches.isEmpty) {
+            print('⚡ No changes detected for note ${note.id} - skipping');
+            continue; // No changes, skip this note
+          }
+
+          final patchText = patchToText(patches);
+          print(
+            '📋 Generated patch: ${patchText.substring(0, math.min(patchText.length, 100))}${patchText.length > 100 ? '...' : ''}',
+          );
+
+          noteData.addAll({'eventType': 'patch', 'patch': patchText});
+        }
+
+        notesData.add(noteData);
+      } catch (e, stackTrace) {
+        print('❌ Error processing note ${note.id}: $e');
+        print('Stack trace: $stackTrace');
+
+        // Force full sync for this note by clearing shadow cache
+        await _clearShadowCache(note);
+
+        // Try again with full content
+        final fallbackContent = note.relativePath != null
+            ? await _storageService.readNote(note.relativePath!)
+            : note.body;
+
+        notesData.add({
+          'localId': note.id,
+          'serverId': note.serverId,
+          'title': note.title,
+          'content': fallbackContent,
+          'eventType': note.serverId == null ? 'create' : 'update',
+          'createdAt': note.createdAt?.toIso8601String(),
+          'updatedAt': note.updatedAt?.toIso8601String(),
+          'isDeleted': note.isDeleted,
+        });
+      }
+    }
+
+    if (notesData.isEmpty) {
+      print('📝 No changes to sync after processing');
+      return PushResult(pushedNotes: 0);
+    }
+
+    print('📤 Pushing ${notesData.length} notes to server');
 
     // Get authentication headers with challenge-response
     final headers = await _getAuthHeaders();
@@ -273,21 +404,51 @@ class KeyBasedSyncService {
 
       // Update local notes with server IDs and sync status
       for (final result in results) {
-        final localId = result['localId'] as int;
-        final note = notesToSync.firstWhere((n) => n.id == localId);
+        try {
+          final localId = result['localId'] as int;
+          final note = notesToSync.firstWhere((n) => n.id == localId);
 
-        if (result['status'] == 'created' || result['status'] == 'updated') {
-          await _noteDatabase.updateSyncStatus(
-            note.id,
-            serverId: result['serverId'],
-            lastSyncedAt: DateTime.now(),
-            needsSync: false,
-          );
+          if (result['status'] == 'created' || result['status'] == 'updated') {
+            // Update shadow cache with current content
+            final currentContent = note.relativePath != null
+                ? await _storageService.readNote(note.relativePath!)
+                : note.body;
+
+            await _updateShadowCache(note, currentContent);
+
+            // Update sync metadata
+            await _noteDatabase.updateSyncStatus(
+              note.id,
+              serverId: result['serverId'],
+              lastSyncedAt: DateTime.now(),
+              needsSync: false,
+            );
+
+            print('✅ Successfully synced note ${note.id}');
+          } else if (result['status'] == 'patch_failed' ||
+              result['status'] == 'conflict') {
+            // Server couldn't apply patch - force full sync next time
+            print(
+              '⚠️ Patch failed for note ${note.id} - clearing shadow cache',
+            );
+            await _clearShadowCache(note);
+          }
+        } catch (e) {
+          print('❌ Error updating sync status for result: $result, error: $e');
         }
       }
 
-      print('Pushed ${results.length} notes successfully');
+      print('✅ Pushed ${results.length} notes successfully');
       return PushResult(pushedNotes: results.length);
+    } else if (response.statusCode == 409) {
+      // Conflict detected - clear shadow caches and retry with full sync
+      print('⚠️ Conflict detected - clearing shadow caches for retry');
+      for (final note in notesToSync) {
+        await _clearShadowCache(note);
+      }
+      throw Exception(
+        'Sync conflict detected. Shadow caches cleared. Please retry sync.',
+      );
     } else {
       throw Exception(
         'Failed to push changes: ${response.statusCode} - ${response.body}',
@@ -376,10 +537,16 @@ class KeyBasedSyncService {
 
           // If still no match, create a new note (genuine remote note)
           if (existingNote == null) {
+            // Create file for the note content
+            final fileName = _storageService.sanitizeFilename(title);
+            await _storageService.writeNote(fileName, body);
+
             // Create note with explicit needsSync = false since it's from server
             final noteId = await _noteDatabase.addNoteWithId(
               title,
-              body: body,
+              body: '', // Content is in file, not database
+              fileName: fileName,
+              relativePath: fileName, // CRITICAL FIX: Set relativePath!
               needsSync: false,
             );
             await _noteDatabase.updateSyncStatus(
@@ -388,8 +555,95 @@ class KeyBasedSyncService {
               lastSyncedAt: DateTime.now(),
               needsSync: false,
             );
-            print('Created new note from remote: $serverId (ID: $noteId)');
+            print(
+              'Created new note from remote: $serverId (ID: $noteId) with file: $fileName',
+            );
             pulledNotes++;
+          }
+        } else if (eventType == 'patch') {
+          // Handle differential patch from server
+          final existingNote = _noteDatabase.currentNotes
+              .where((n) => n.serverId == serverId)
+              .firstOrNull;
+
+          if (existingNote != null) {
+            final effectiveFilePath = _getEffectiveFilePath(existingNote);
+
+            if (effectiveFilePath != null) {
+              try {
+                print('🔄 Applying patch to note ${existingNote.id}');
+
+                // Read current file content
+                final currentContent = await _storageService.readNote(
+                  effectiveFilePath,
+                );
+
+                // Parse and apply patches
+                final patchText = change['patch'] as String;
+                final patches = patchFromText(patchText);
+                final results = patchApply(
+                  patches,
+                  currentContent,
+                  deleteThreshold: _dmp.patchDeleteThreshold,
+                  margin: _dmp.patchMargin,
+                  diffTimeout: _dmp.diffTimeout,
+                  matchThreshold: _dmp.matchThreshold,
+                  matchDistance: _dmp.matchDistance,
+                );
+
+                if (results.length >= 2) {
+                  final newContent = results[0] as String;
+                  final successList = results[1] as List<bool>;
+
+                  if (successList.every((success) => success)) {
+                    // All patches applied successfully
+                    print(
+                      '✅ Patch applied successfully to note ${existingNote.id}',
+                    );
+
+                    // Update file with new content using effective file path
+                    await _storageService.writeNote(
+                      effectiveFilePath,
+                      newContent,
+                    );
+
+                    // Update shadow cache
+                    await _updateShadowCache(existingNote, newContent);
+
+                    // Update sync metadata
+                    await _noteDatabase.updateSyncStatus(
+                      existingNote.id,
+                      lastSyncedAt: DateTime.now(),
+                      needsSync: false,
+                    );
+
+                    pulledNotes++;
+                  } else {
+                    // Some patches failed - request full content
+                    print(
+                      '❌ Patch application failed for note ${existingNote.id} - requesting full sync',
+                    );
+                    await _clearShadowCache(existingNote);
+                    // Note will be re-synced with full content on next sync
+                  }
+                } else {
+                  print('❌ Invalid patch result for note ${existingNote.id}');
+                  await _clearShadowCache(existingNote);
+                }
+              } catch (e) {
+                print('❌ Error applying patch to note ${existingNote.id}: $e');
+                await _clearShadowCache(existingNote);
+                // Fallback: force full content sync
+              }
+            } else {
+              print(
+                '⚠️ Received patch for note ${existingNote.id} but no file path available',
+              );
+              await _clearShadowCache(existingNote);
+            }
+          } else {
+            print('⚠️ Received patch for unknown note $serverId');
+            // Can't apply patch to non-existent note
           }
         } else if (eventType == 'update') {
           // Find note by server ID and update it
@@ -401,10 +655,27 @@ class KeyBasedSyncService {
             // Only update if the remote version is newer
             if (existingNote.lastSyncedAt == null ||
                 eventTime.isAfter(existingNote.lastSyncedAt!)) {
+              // Update the file with new content
+              if (existingNote.relativePath != null) {
+                await _storageService.writeNote(
+                  existingNote.relativePath!,
+                  body,
+                );
+                print('Updated file content for note ${existingNote.id}');
+              } else {
+                // Legacy note without relativePath - create file and set path
+                final fileName = _storageService.sanitizeFilename(title);
+                await _storageService.writeNote(fileName, body);
+                existingNote.relativePath = fileName;
+                print(
+                  'Created file for legacy note ${existingNote.id}: $fileName',
+                );
+              }
+
               await _noteDatabase.updateNoteFromSync(
                 existingNote.id,
                 title,
-                body: body,
+                body: '', // Content is in file, not database
               );
               await _noteDatabase.updateSyncStatus(
                 existingNote.id,
@@ -421,13 +692,26 @@ class KeyBasedSyncService {
             print(
               'Received update for unknown note $serverId, treating as create',
             );
-            await _noteDatabase.addNote(title, body: body);
+
+            // Create file for the note content
+            final fileName = _storageService.sanitizeFilename(title);
+            await _storageService.writeNote(fileName, body);
+
+            await _noteDatabase.addNote(
+              title,
+              body: '', // Content is in file, not database
+              fileName: fileName,
+              relativePath: fileName, // CRITICAL FIX: Set relativePath!
+            );
             final newNote = _noteDatabase.currentNotes.last;
             await _noteDatabase.updateSyncStatus(
               newNote.id,
               serverId: serverId,
               lastSyncedAt: DateTime.now(),
               needsSync: false,
+            );
+            print(
+              'Created note from unknown update: $serverId with file: $fileName',
             );
             pulledNotes++;
           }
@@ -488,6 +772,69 @@ class KeyBasedSyncService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_lastSyncKey);
     print('Cleared sync timestamp - next sync will fetch all changes');
+  }
+
+  // Clear all shadow caches to force full sync (recovery method)
+  Future<void> clearAllShadowCaches() async {
+    print('🧹 Clearing all shadow caches to force full sync...');
+
+    for (final note in _noteDatabase.currentNotes) {
+      if (note.shadowContentZLib != null || note.lastSyncedHash != null) {
+        await _clearShadowCache(note);
+        print('Cleared shadow cache for note ${note.id} (${note.title})');
+      }
+    }
+
+    print('✅ All shadow caches cleared. Next sync will send full content.');
+  }
+
+  // Validate and repair sync state (diagnostic method)
+  Future<Map<String, dynamic>> validateSyncState() async {
+    print('🔍 Validating sync state...');
+
+    int notesWithFiles = 0;
+    int notesWithShadowCache = 0;
+    int notesNeedingSync = 0;
+    int orphanedFiles = 0;
+    List<String> issues = [];
+
+    for (final note in _noteDatabase.currentNotes) {
+      // Check if note has a file path
+      if (note.relativePath != null) {
+        notesWithFiles++;
+
+        // Check if file actually exists
+        final fileExists = await _storageService.fileExists(note.relativePath!);
+        if (!fileExists) {
+          issues.add(
+            'Note ${note.id} (${note.title}) references missing file: ${note.relativePath}',
+          );
+        }
+      }
+
+      // Check shadow cache state
+      if (note.shadowContentZLib != null || note.lastSyncedHash != null) {
+        notesWithShadowCache++;
+      }
+
+      // Check sync status
+      if (note.needsSync || note.isDirty) {
+        notesNeedingSync++;
+      }
+    }
+
+    final result = {
+      'totalNotes': _noteDatabase.currentNotes.length,
+      'notesWithFiles': notesWithFiles,
+      'notesWithShadowCache': notesWithShadowCache,
+      'notesNeedingSync': notesNeedingSync,
+      'orphanedFiles': orphanedFiles,
+      'issues': issues,
+      'isHealthy': issues.isEmpty,
+    };
+
+    print('📊 Sync state validation complete: $result');
+    return result;
   }
 
   // Get sync status

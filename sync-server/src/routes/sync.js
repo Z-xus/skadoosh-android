@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../database/init');
 const CryptoUtils = require('../utils/crypto');
+const DiffMatchPatch = require('diff-match-patch');
 
 const router = express.Router();
 
@@ -182,6 +183,114 @@ router.post('/push', verifyKeyAuth, async (req, res) => {
               localId,
               serverId,
               status: 'not_found'
+            });
+          }
+        } else if (eventType === 'patch' && serverId) {
+          // Apply differential patch to existing note
+          try {
+            console.log(`🔄 Applying patch to note ${serverId}`);
+            
+            // First, get the current content from database
+            const currentResult = await client.query(`
+              SELECT content FROM notes 
+              WHERE id = $1 AND sync_group_id = $2
+            `, [serverId, groupId]);
+
+            if (currentResult.rows.length === 0) {
+              console.error(`❌ Note ${serverId} not found for patch application`);
+              results.push({
+                localId,
+                serverId,
+                status: 'patch_failed',
+                error: 'Note not found'
+              });
+              continue;
+            }
+
+            const currentContent = currentResult.rows[0].content || '';
+            const patchText = note.patch;
+            
+            if (!patchText) {
+              console.error(`❌ No patch provided for note ${serverId}`);
+              results.push({
+                localId,
+                serverId,
+                status: 'patch_failed',
+                error: 'No patch provided'
+              });
+              continue;
+            }
+
+            // Apply patch using DiffMatchPatch
+            const dmp = new DiffMatchPatch();
+            const patches = dmp.patch_fromText(patchText);
+            const patchResults = dmp.patch_apply(patches, currentContent);
+
+            if (patchResults.length >= 2) {
+              const newContent = patchResults[0];
+              const successList = patchResults[1];
+
+              // Check if all patches applied successfully
+              const allSucceeded = successList.every(success => success);
+
+              if (allSucceeded) {
+                console.log(`✅ Patch applied successfully to note ${serverId}`);
+                
+                // Update the note with the new content
+                const updateResult = await client.query(`
+                  UPDATE notes 
+                  SET content = $1, updated_at = $2, version = version + 1
+                  WHERE id = $3 AND sync_group_id = $4
+                  RETURNING id, updated_at, version
+                `, [newContent, new Date().toISOString(), serverId, groupId]);
+
+                if (updateResult.rows.length > 0) {
+                  // Create sync event
+                  await client.query(`
+                    INSERT INTO sync_events (sync_group_id, note_id, event_type, device_id, key_fingerprint)
+                    VALUES ($1, $2, 'patch', $3, $4)
+                  `, [groupId, serverId, deviceId, keyFingerprint]);
+
+                  results.push({
+                    localId,
+                    serverId,
+                    status: 'patched',
+                    updatedAt: updateResult.rows[0].updated_at,
+                    version: updateResult.rows[0].version
+                  });
+                } else {
+                  results.push({
+                    localId,
+                    serverId,
+                    status: 'patch_failed',
+                    error: 'Database update failed'
+                  });
+                }
+              } else {
+                console.warn(`⚠️ Some patches failed for note ${serverId}`);
+                results.push({
+                  localId,
+                  serverId,
+                  status: 'patch_failed',
+                  error: 'Patch application failed'
+                });
+              }
+            } else {
+              console.error(`❌ Invalid patch result for note ${serverId}`);
+              results.push({
+                localId,
+                serverId,
+                status: 'patch_failed',
+                error: 'Invalid patch result'
+              });
+            }
+          } catch (patchError) {
+            console.error(`❌ Error applying patch to note ${serverId}:`, patchError);
+            results.push({
+              localId,
+              serverId,
+              status: 'patch_failed',
+              error: patchError.message
             });
           }
         }
