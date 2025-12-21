@@ -6,7 +6,12 @@ part 'note.g.dart';
 class Note {
   Id id = Isar.autoIncrement;
   late String title;
-  String body = ''; // Separate body content
+
+  // DEPRECATED: content is now stored in local .md files.
+  // Use fileName to read/write the actual content.
+  String body = '';
+
+  String? fileName; // Link to the physical .md file
 
   // Trash bin functionality
   bool isDeleted = false;

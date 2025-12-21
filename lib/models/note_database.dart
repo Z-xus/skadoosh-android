@@ -11,6 +11,7 @@ class NoteDatabase extends ChangeNotifier {
   static late Isar isar;
   static Future<void> initialize() async {
     final dir = await getApplicationDocumentsDirectory();
+    print('📂 Isar database initialized at: ${dir.path}');
     isar = await Isar.open([NoteSchema], directory: dir.path);
   }
 
@@ -34,13 +35,18 @@ class NoteDatabase extends ChangeNotifier {
   }
 
   // create note with title and body
-  Future<void> addNote(String title, {String body = ''}) async {
+  Future<void> addNote(
+    String title, {
+    String body = '',
+    String? fileName,
+  }) async {
     final deviceId = await _getDeviceId();
     final now = DateTime.now();
 
     final newNote = Note()
       ..title = title.isNotEmpty ? title : 'Untitled'
       ..body = body
+      ..fileName = fileName
       ..deviceId = deviceId
       ..createdAt = now
       ..updatedAt = now
@@ -51,6 +57,9 @@ class NoteDatabase extends ChangeNotifier {
       await isar.notes.put(newNote);
     });
 
+    print(
+      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}',
+    );
     fetchNotes();
   }
 
@@ -58,6 +67,7 @@ class NoteDatabase extends ChangeNotifier {
   Future<int> addNoteWithId(
     String title, {
     String body = '',
+    String? fileName,
     bool needsSync = true,
   }) async {
     final deviceId = await _getDeviceId();
@@ -66,6 +76,7 @@ class NoteDatabase extends ChangeNotifier {
     final newNote = Note()
       ..title = title.isNotEmpty ? title : 'Untitled'
       ..body = body
+      ..fileName = fileName
       ..deviceId = deviceId
       ..createdAt = now
       ..updatedAt = now
@@ -76,6 +87,9 @@ class NoteDatabase extends ChangeNotifier {
       await isar.notes.put(newNote);
     });
 
+    print(
+      '💾 Note stored - Title: "${newNote.title}", Database ID: ${newNote.id}',
+    );
     fetchNotes();
     return newNote.id;
   }
@@ -103,11 +117,17 @@ class NoteDatabase extends ChangeNotifier {
   }
 
   // update note with title and body
-  Future<void> updateNote(int id, String title, {String? body}) async {
+  Future<void> updateNote(
+    int id,
+    String title, {
+    String? body,
+    String? fileName,
+  }) async {
     final existingNote = await isar.notes.get(id);
     if (existingNote != null && !existingNote.isDeleted) {
       existingNote.title = title.isNotEmpty ? title : 'Untitled';
       if (body != null) existingNote.body = body;
+      if (fileName != null) existingNote.fileName = fileName;
       existingNote.updatedAt = DateTime.now();
       existingNote.needsSync = true;
 
@@ -125,11 +145,14 @@ class NoteDatabase extends ChangeNotifier {
       existingNote.title = title.isNotEmpty ? title : 'Untitled';
       if (body != null) existingNote.body = body;
       existingNote.updatedAt = DateTime.now();
-      // DON'T set needsSync = true since this is from server
+      existingNote.needsSync = true;
 
       await isar.writeTxn(() async {
         await isar.notes.put(existingNote);
       });
+      print(
+        '🔄 Note updated - Title: "${existingNote.title}", Database ID: ${existingNote.id}',
+      );
       await fetchNotes();
     }
   }

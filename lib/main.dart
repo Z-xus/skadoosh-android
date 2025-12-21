@@ -3,11 +3,23 @@ import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
 import 'package:skadoosh_app/services/device_pairing_service.dart';
+import 'package:skadoosh_app/services/storage_service.dart';
 import 'pages/notes_page.dart';
 import 'pages/user_onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize storage service and request permissions first
+  try {
+    await StorageService().init();
+    print('✅ Storage service initialized successfully');
+  } catch (e) {
+    print('❌ Storage service initialization failed: $e');
+    // Continue anyway, as some features might still work
+  }
+
+  // Initialize note database
   await NoteDatabase.initialize();
 
   // Initialize theme provider and load saved theme

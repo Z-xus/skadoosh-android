@@ -36,7 +36,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
       _syncUrlController.text = savedUrl;
     } else {
       // Default development URL
-      _syncUrlController.text = 'http://localhost:3233';
+      _syncUrlController.text = 'http://sumit.engineer:3233';
     }
   }
 
@@ -158,10 +158,12 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Skadoosh Setup'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        title: const Text('Initial Setup'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -236,7 +238,12 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                   onPressed: _isLoading ? null : _registerUser,
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Create Account'),
+                      : Text(
+                          'Create Account',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -298,7 +305,12 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                 child: ElevatedButton.icon(
                   onPressed: _goToNotes,
                   icon: const Icon(Icons.note),
-                  label: const Text('Start Taking Notes'),
+                  label: Text(
+                    'Start Taking Notes',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

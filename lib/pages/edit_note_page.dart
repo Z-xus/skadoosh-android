@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
+import 'package:skadoosh_app/services/storage_service.dart';
 
 class EditNotePage extends StatefulWidget {
   final Note? note;
@@ -24,13 +25,26 @@ class _EditNotePageState extends State<EditNotePage> {
     // Initialize title controller
     _titleController = TextEditingController(text: widget.note?.title ?? '');
 
-    // Initialize the editor state from existing body or blank
-    if (widget.note != null && widget.note!.body.isNotEmpty) {
-      _editorState = EditorState(
-        document: markdownToDocument(widget.note!.body),
-      );
-    } else {
-      _editorState = EditorState.blank();
+    // Initialize the editor state
+    _editorState = EditorState.blank();
+    _loadNoteContent();
+  }
+
+  Future<void> _loadNoteContent() async {
+    if (widget.note == null) return;
+
+    String content = '';
+    if (widget.note!.fileName != null) {
+      content = await StorageService().readNote(widget.note!.fileName!);
+    } else if (widget.note!.body.isNotEmpty) {
+      // Fallback for legacy notes not yet migrated to files
+      content = widget.note!.body;
+    }
+
+    if (content.isNotEmpty) {
+      setState(() {
+        _editorState = EditorState(document: markdownToDocument(content));
+      });
     }
   }
 
@@ -41,10 +55,11 @@ class _EditNotePageState extends State<EditNotePage> {
     super.dispose();
   }
 
-  void _saveNote() {
+  void _saveNote() async {
     final title = _titleController.text.trim();
     final body = documentToMarkdown(_editorState.document);
     final noteDatabase = context.read<NoteDatabase>();
+    final storageService = StorageService();
 
     if (title.isEmpty && body.trim().isEmpty) {
       // Don't save empty notes
@@ -52,19 +67,36 @@ class _EditNotePageState extends State<EditNotePage> {
       return;
     }
 
+    final sanitizedTitle = title.isEmpty ? 'Untitled' : title;
+
+    // Determine filename
+    String fileName =
+        widget.note?.fileName ??
+        storageService.sanitizeFilename(sanitizedTitle);
+
+    // Write to local file
+    await storageService.writeNote(fileName, body);
+
     if (widget.note == null) {
-      // Create new note
-      noteDatabase.addNote(title.isEmpty ? 'Untitled' : title, body: body);
+      // Create new note in Isar with metadata
+      await noteDatabase.addNote(
+        sanitizedTitle,
+        body: '', // Body is now in file
+        fileName: fileName,
+      );
     } else {
-      // Update existing note
-      noteDatabase.updateNote(
+      // Update existing note in Isar with metadata
+      await noteDatabase.updateNote(
         widget.note!.id,
-        title.isEmpty ? 'Untitled' : title,
-        body: body,
+        sanitizedTitle,
+        body: '', // Body is now in file
+        fileName: fileName,
       );
     }
 
-    Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   final List<CharacterShortcutEvent> customCharacterShortcuts = [
