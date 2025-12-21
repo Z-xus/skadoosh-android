@@ -1,4 +1,7 @@
-1. Diff based syncing.
-2. Make convience, try key exchange, and easy to connect multiple devices.
-3. Fully trash, move to across all to trash.
-4. Offline sync on local network like syncthing. (Good to have)
+[ ] Diff based syncing.
+[ ] External file storing. (ask user to store where + dir_picker)
+[ ] Make convience, try key exchange, and easy to connect multiple devices.
+[ ] Fully trash, move to across all to trash.
+[ ] hide notes
+[ ] folder
+[ ] click to edit
