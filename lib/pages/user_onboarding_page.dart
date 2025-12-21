@@ -194,20 +194,60 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               // Registration form
               TextField(
                 controller: _usernameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Username',
                   hintText: 'Enter your username',
                   border: OutlineInputBorder(),
+
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  floatingLabelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
                 enabled: !_isLoading,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _syncUrlController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Sync Server URL',
                   hintText: 'https://your-server.com',
                   border: OutlineInputBorder(),
+
+                  labelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  floatingLabelStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
                 enabled: !_isLoading,
               ),
@@ -233,15 +273,37 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               // Register button
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 52,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _registerUser,
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.inversePrimary,
+                    disabledBackgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isLoading
-                      ? const CircularProgressIndicator()
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
                       : Text(
                           'Create Account',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.4,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                 ),
@@ -250,6 +312,9 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
             ] else ...[
               // Registered user view
               Card(
+                // elevation: 0,
+                borderOnForeground: true,
+                color: Theme.of(context).colorScheme.inverseSurface,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -257,24 +322,24 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                     children: [
                       Text(
                         'Your Share ID',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Expanded(
-                            child: Text(
-                              _shareId ?? '',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    fontFamily: 'Courier',
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.inversePrimary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
+                          Text(
+                            _shareId ?? '',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  fontFamily: 'Courier',
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 28,
+                                ),
                           ),
                           IconButton(
                             onPressed: _copyShareId,
@@ -286,10 +351,10 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                       const SizedBox(height: 8),
                       Text(
                         'Share this ID with others to sync notes securely.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -301,14 +366,26 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               // Action buttons
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 52,
                 child: ElevatedButton.icon(
                   onPressed: _goToNotes,
-                  icon: const Icon(Icons.note),
-                  label: Text(
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.inversePrimary,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: Icon(Icons.note, size: 18),
+                  label: const Text(
                     'Start Taking Notes',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.inversePrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ),
@@ -316,14 +393,25 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 52,
                 child: OutlinedButton.icon(
                   onPressed: _goToDeviceManagement,
-                  icon: const Icon(Icons.devices),
-                  label: Text(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: Icon(Icons.devices, size: 18),
+                  label: const Text(
                     'Manage Devices',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.inversePrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ),
@@ -349,7 +437,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                       Icon(
                         Icons.security,
                         size: 20,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.inversePrimary,
                       ),
                       const SizedBox(width: 8),
                       Text(
