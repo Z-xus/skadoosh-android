@@ -9,18 +9,8 @@ import 'pages/user_onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize storage service and request permissions first
-  try {
-    await StorageService().init();
-    print('✅ Storage service initialized successfully');
-  } catch (e) {
-    print('❌ Storage service initialization failed: $e');
-    // Continue anyway, as some features might still work
-  }
-
-  // Initialize note database
   await NoteDatabase.initialize();
+  await StorageService().init();
 
   // Initialize theme provider and load saved theme
   final themeProvider = ThemeProvider();

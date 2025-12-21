@@ -271,7 +271,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                                     fontFamily: 'Courier',
                                     color: Theme.of(
                                       context,
-                                    ).colorScheme.primary,
+                                    ).colorScheme.inversePrimary,
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -320,7 +320,12 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                 child: OutlinedButton.icon(
                   onPressed: _goToDeviceManagement,
                   icon: const Icon(Icons.devices),
-                  label: const Text('Manage Devices'),
+                  label: Text(
+                    'Manage Devices',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
                 ),
               ),
             ],
