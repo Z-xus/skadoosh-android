@@ -154,13 +154,22 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
+  String _getFriendlyDeviceName(String deviceName) {
+    if (deviceName.toLowerCase().contains('sdk built for') ||
+        deviceName.toLowerCase().contains('google sdk')) {
+      return 'Android';
+    }
+    return deviceName;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Device Management'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        elevation: 0,
+        foregroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(onPressed: _refreshData, icon: const Icon(Icons.refresh)),
         ],
@@ -173,234 +182,476 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Your Share ID section
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your Share ID',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                  // Your Share ID section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withOpacity(0.4),
+                          Theme.of(context).colorScheme.surface,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Share ID',
+                          style: TextStyle(
+                            letterSpacing: 1.2,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Theme.of(context).colorScheme.inversePrimary,
                           ),
-                          const SizedBox(height: 8),
-                          Row(
+                        ),
+                        const SizedBox(height: 16),
+                        // The ID Display Box
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.inverseSurface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            spacing: 6,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  _currentUserShareId ?? 'Not registered',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        fontFamily: 'Courier',
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
+                              Text(
+                                _currentUserShareId ?? 'Not registered',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      fontFamily: 'monospace',
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                               ),
-                              IconButton(
+                              IconButton.filledTonal(
                                 onPressed: _copyShareId,
-                                icon: const Icon(Icons.copy),
+                                icon: const Icon(Icons.copy_rounded, size: 20),
                                 tooltip: 'Copy Share ID',
                               ),
                             ],
                           ),
-                          Text(
-                            'Share this ID with others to allow them to send you pairing requests.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              size: 14,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  'Share this ID with others to pair devices securely.',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
                                 ),
-                          ),
-                        ],
-                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   // Pair new device section
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pair New Device',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceVariant.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(
+                        24,
+                      ), // Softer, modern rounding
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pair New Device',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontSize: 20,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Enter the Share ID of the device you want to pair with:',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _shareIdController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'username#abc123',
-                                    border: OutlineInputBorder(),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _shareIdController,
+                                decoration: InputDecoration(
+                                  hintText: 'username#abc123',
+                                  hintStyle: TextStyle(
+                                    color: Colors.grey.withOpacity(0.6),
                                   ),
-                                  enabled: !_isLoading,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : _sendPairingRequest,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(
+                                  filled: true,
+                                  fillColor: Theme.of(
                                     context,
-                                  ).colorScheme.primary,
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
+                                  ).colorScheme.surface,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide
+                                        .none, // Removes the harsh black line
+                                  ),
                                 ),
-                                child: const Text('Send Request'),
+                                enabled: !_isLoading,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                            const SizedBox(width: 12),
+                            FilledButton(
+                              // Material 3 component for a cleaner look
+                              onPressed: _isLoading
+                                  ? null
+                                  : _sendPairingRequest,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.inversePrimary,
+                              ),
+                              child: const Text('Pair'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
 
                   // Pending requests section
                   if (_pendingRequests.isNotEmpty) ...[
-                    Text(
-                      'Pending Requests',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0,
+                        vertical: 8.0,
+                      ),
+                      child: Text(
+                        'Pending Requests',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.inversePrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 20,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
                     ...(_pendingRequests.map(
-                      (request) => Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.person_add),
-                          title: Text('From: ${request.fromUsername}'),
-                          subtitle: Text(
-                            'Share ID: ${request.fromShareId}\\nDevice: ${request.fromDeviceName}',
+                      (request) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withOpacity(0.5),
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : () =>
-                                          _respondToRequest(request.id, false),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.error,
-                                ),
-                                child: const Text('Reject'),
+                        ),
+                        child: Row(
+                          children: [
+                            // Avatar/Icon Circle
+                            CircleAvatar(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              child: Icon(
+                                Icons.person_outline,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                              ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : () => _respondToRequest(request.id, true),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
-                                child: const Text('Accept'),
+                            ),
+                            const SizedBox(width: 16),
+                            // Info Section
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    request.fromUsername,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${request.fromShareId} • ${_getFriendlyDeviceName(request.fromDeviceName)}',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontFamily:
+                                              'monospace', // Gives it that tech/ID look
+                                          color: Colors.grey[600],
+                                        ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          isThreeLine: true,
+                            ),
+                            // Action Buttons
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () => _respondToRequest(
+                                          request.id,
+                                          false,
+                                        ),
+                                  icon: const Icon(Icons.close),
+                                  color: Theme.of(context).colorScheme.error,
+                                  tooltip: 'Reject',
+                                ),
+                                const SizedBox(width: 4),
+                                IconButton.filled(
+                                  // Material 3 filled icon button
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () =>
+                                            _respondToRequest(request.id, true),
+                                  icon: const Icon(Icons.check),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                  ),
+                                  tooltip: 'Accept',
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     )),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                   ],
 
-                  // Paired devices section
-                  Text(
-                    'Paired Devices (${_pairedDevices.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  //     (device) => Card(
+                  //       child: ListTile(
+                  //         leading: Icon(
+                  //           Icons
+                  //               .phone_android, // Could be dynamic based on device type
+                  //           color: Theme.of(context).colorScheme.primary,
+                  //         ),
+                  //         title: Text(device.deviceName),
+                  //         subtitle: Text(
+                  //           'Owner: ${device.username}\\nShare ID: ${device.shareId}',
+                  //         ),
+                  //         trailing: Icon(
+                  //           Icons.sync,
+                  //           color: Theme.of(context).colorScheme.tertiary,
+                  //         ),
+                  //         isThreeLine: true,
+                  //       ),
+                  //     ),
+                  //   )),
+                  // Paired Devices Header with Badge
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Paired Devices',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(999), // pill
+                          ),
+                          child: Text(
+                            _pairedDevices.length.toString(),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.inversePrimary,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),
+
                   if (_pairedDevices.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.devices_other,
-                                size: 64,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.3),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No paired devices',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.5),
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Send your Share ID to other devices to start syncing notes securely.',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.5),
-                                    ),
-                              ),
-                            ],
-                          ),
+                    // Minimalist Empty State
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withOpacity(0.5),
                         ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.sensors_off_rounded,
+                            size: 48,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.2),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No paired devices',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Sync your notes by sharing your ID.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.4),
+                                ),
+                          ),
+                        ],
                       ),
                     )
                   else
                     ...(_pairedDevices.map(
-                      (device) => Card(
-                        child: ListTile(
-                          leading: Icon(
-                            Icons
-                                .phone_android, // Could be dynamic based on device type
-                            color: Theme.of(context).colorScheme.primary,
+                      (device) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
                           ),
-                          title: Text(device.deviceName),
-                          subtitle: Text(
-                            'Owner: ${device.username}\\nShare ID: ${device.shareId}',
-                          ),
-                          trailing: Icon(
-                            Icons.sync,
-                            color: Theme.of(context).colorScheme.tertiary,
-                          ),
-                          isThreeLine: true,
+                        ),
+                        child: Row(
+                          children: [
+                            // Device Icon Container
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.inversePrimary,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                Icons.phone_android_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Device Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getFriendlyDeviceName(device.deviceName),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Owner: ${device.username}',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: Colors.grey[600]),
+                                  ),
+                                  Text(
+                                    device.shareId,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontFamily: 'monospace',
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.inversePrimary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Status/Action
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.inversePrimary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.sync_rounded,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )),
-
                   // Error message
                   if (_errorMessage != null)
                     Container(
