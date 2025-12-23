@@ -1,6 +1,5 @@
 import 'package:isar/isar.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:archive/archive.dart';
 import 'package:skadoosh_app/services/storage_service.dart';

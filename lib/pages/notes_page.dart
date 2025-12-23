@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/components/drawer.dart';
-// Note: We are replacing the external NoteTile with a local _MinimalNoteTile
-// to fix the layout issues directly in this file.
-// import 'package:skadoosh_app/components/note_tile.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/key_based_sync_service.dart';
@@ -23,6 +20,9 @@ class _NotesPageState extends State<NotesPage>
   bool _isSyncing = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  // 1. Add state for navigation
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -133,7 +133,8 @@ class _NotesPageState extends State<NotesPage>
             ? colorScheme.errorContainer
             : null,
         behavior: SnackBarBehavior.floating,
-        margin: DesignTokens.pageMargin,
+        // Adjusted margin to appear above the new bottom nav
+        margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radiusM),
         ),
@@ -173,19 +174,109 @@ class _NotesPageState extends State<NotesPage>
     _showMessage('Note archived', isSuccess: true);
   }
 
+  // 2. Extracted the Notes View Logic to keep build method clean
+  Widget _buildNotesView(ThemeData theme, ColorScheme colorScheme) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: RefreshIndicator(
+        onRefresh: _performSync,
+        color: colorScheme.primary,
+        child: Consumer<NoteDatabase>(
+          builder: (context, noteDatabase, child) {
+            final notes = noteDatabase.currentNotes;
+
+            if (notes.isEmpty) {
+              return _EmptyNotesView(onCreateNote: _createNote, theme: theme);
+            }
+
+            return CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  // Increased bottom padding so the last note isn't hidden behind the floating bar
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final note = notes[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _SwipeableNoteTile(
+                          key: ValueKey(note.id),
+                          note: note,
+                          onTap: () => _updateNote(note),
+                          onArchive: () => _archiveNote(note.id),
+                          onDelete: () => _moveNoteToTrash(note.id),
+                        ),
+                      );
+                    }, childCount: notes.length),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // 3. Simple placeholders for the other pages
+  Widget _buildPlaceholderPage(String title, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 64,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+          const SizedBox(height: 16),
+          Text(title, style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
+    // 4. Switch visible content
+    Widget content;
+    String title;
+
+    switch (_currentIndex) {
+      case 0:
+        content = _buildNotesView(theme, colorScheme);
+        title = 'Notes';
+        break;
+      case 1:
+        content = _buildPlaceholderPage('Todos', Icons.check_circle_outline);
+        title = 'Todos';
+        break;
+      case 2:
+        content = _buildPlaceholderPage('Archive', Icons.inventory_2_outlined);
+        title = 'Archive';
+        break;
+      case 3:
+        content = _buildPlaceholderPage('Settings', Icons.settings_outlined);
+        title = 'Settings';
+        break;
+      default:
+        content = _buildNotesView(theme, colorScheme);
+        title = 'Notes';
+    }
+
     return Scaffold(
+      // 5. CRITICAL: extendBody allows content to flow behind the navigation bar
+      extendBody: true,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
         title: Text(
-          'Notes',
+          title,
           style: textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w600,
             letterSpacing: -0.5,
@@ -193,84 +284,108 @@ class _NotesPageState extends State<NotesPage>
         ),
         centerTitle: false,
         actions: [
-          Semantics(
-            label: _isSyncing
-                ? 'Syncing notes in progress'
-                : 'Sync notes with server',
-            button: true,
-            child: IconButton(
-              onPressed: _isSyncing ? null : _performSync,
-              icon: _isSyncing
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          colorScheme.primary,
+          // Only show Sync button on Notes page
+          if (_currentIndex == 0) ...[
+            Semantics(
+              label: _isSyncing
+                  ? 'Syncing notes in progress'
+                  : 'Sync notes with server',
+              button: true,
+              child: IconButton(
+                onPressed: _isSyncing ? null : _performSync,
+                icon: _isSyncing
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.primary,
+                          ),
                         ),
+                      )
+                    : Icon(
+                        Icons.sync_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                        size: 22,
                       ),
-                    )
-                  : Icon(
-                      Icons.sync_rounded,
-                      color: colorScheme.onSurfaceVariant,
-                      size: 22,
-                    ),
-              tooltip: _isSyncing ? 'Syncing...' : 'Sync notes',
+                tooltip: _isSyncing ? 'Syncing...' : 'Sync notes',
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
         ],
       ),
       backgroundColor: colorScheme.surface,
       drawer: const MyDrawer(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNote,
-        elevation: 2,
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add_rounded),
+      // Hide FAB if not on Notes page
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              onPressed: _createNote,
+              elevation: 2,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
+
+      body: content,
+
+      // 6. The Floating Custom Navigation Bar
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 64,
+          margin: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                offset: const Offset(0, 10),
+                blurRadius: 20,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
+              _buildNavItem(1, Icons.task_alt_rounded, Icons.task_alt_outlined),
+              _buildNavItem(
+                2,
+                Icons.inventory_2_rounded,
+                Icons.inventory_2_outlined,
+              ),
+              _buildNavItem(3, Icons.settings_rounded, Icons.settings_outlined),
+            ],
+          ),
+        ),
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: RefreshIndicator(
-          onRefresh: _performSync,
-          color: colorScheme.primary,
-          child: Consumer<NoteDatabase>(
-            builder: (context, noteDatabase, child) {
-              final notes = noteDatabase.currentNotes;
+    );
+  }
 
-              if (notes.isEmpty) {
-                return _EmptyNotesView(onCreateNote: _createNote, theme: theme);
-              }
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon) {
+    final isSelected = _currentIndex == index;
 
-              return CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final note = notes[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: _SwipeableNoteTile(
-                            key: ValueKey(note.id),
-                            note: note,
-                            onTap: () => _updateNote(note),
-                            onArchive: () => _archiveNote(note.id),
-                            onDelete: () => _moveNoteToTrash(note.id),
-                          ),
-                        );
-                      }, childCount: notes.length),
-                    ),
-                  ),
-                ],
-              );
-            },
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) {
+            return ScaleTransition(scale: animation, child: child);
+          },
+          child: Icon(
+            isSelected ? activeIcon : inactiveIcon,
+            key: ValueKey<bool>(isSelected),
+            color: isSelected ? Colors.white : Colors.grey.shade600,
+            size: 26,
           ),
         ),
       ),
@@ -444,7 +559,6 @@ class _SwipeableNoteTileState extends State<_SwipeableNoteTile>
               ),
 
             // Right container (delete - red)
-            // FIXED: Using single block with Align(centerRight)
             if (showRightContainer)
               Positioned(
                 right: 0,
