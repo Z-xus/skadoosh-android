@@ -34,12 +34,7 @@ class _EditNotePageState extends State<EditNotePage> {
       if (widget.note == null) {
         final newState = EditorState(
           document: Document(
-            root: pageNode(
-              children: [
-                headingNode(level: 1, text: 'Untitled'),
-                paragraphNode(),
-              ],
-            ),
+            root: pageNode(children: [headingNode(level: 1), paragraphNode()]),
           ),
         );
         if (mounted) {

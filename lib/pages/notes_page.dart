@@ -356,15 +356,16 @@ class _EmptyNotesView extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    return Center(
-      child: Container(
-        padding: DesignTokens.pageMarginLarge,
+    return Padding(
+      padding: DesignTokens.pageMarginLarge,
+      child: Transform.translate(
+        offset: const Offset(0, -32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Empty state icon
             Container(
-              padding: DesignTokens.spaceXL,
+              padding: DesignTokens.spaceL,
               decoration: BoxDecoration(
                 color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(DesignTokens.radiusXXL),
@@ -375,21 +376,16 @@ class _EmptyNotesView extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-
             SizedBox(height: DesignTokens.spaceL.top),
-
-            // Empty state title
             Text(
               'Start your first note',
               style: textTheme.headlineSmall?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
+              textAlign: TextAlign.center,
             ),
-
             SizedBox(height: DesignTokens.spaceS.top),
-
-            // Empty state description
             Text(
               'Capture thoughts, ideas, and reminders securely',
               style: textTheme.bodyLarge?.copyWith(
@@ -397,19 +393,13 @@ class _EmptyNotesView extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             SizedBox(height: DesignTokens.spaceXL.top),
-
-            // Create note button
             FilledButton.icon(
               onPressed: onCreateNote,
               icon: const Icon(Icons.add_rounded),
               label: const Text('Create Note'),
             ),
-
             SizedBox(height: DesignTokens.spaceS.top),
-
-            // Sync hint
             Text(
               'Pull down to sync with your other devices',
               style: textTheme.bodySmall?.copyWith(

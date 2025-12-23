@@ -371,9 +371,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                   onPressed: _goToNotes,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.inversePrimary,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

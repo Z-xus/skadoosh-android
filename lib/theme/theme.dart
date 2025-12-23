@@ -1,42 +1,72 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'design_tokens.dart';
-import 'catppuccin_colors.dart';
+import 'base/semantic_tokens.dart';
+import 'base/theme_family.dart';
+import 'theme_registry.dart';
 
-/// Enhanced theme system using beautiful Catppuccin color palettes
+/// Enhanced theme system using semantic tokens and supporting multiple theme families.
+///
+/// This system provides:
+/// - Multiple theme families (Catppuccin, Dracula, Nord)
+/// - Semantic token mapping for consistent UI
+/// - System sync (auto) mode
+/// - Silent migration from legacy themes
+/// - Hierarchical theme selection (Mode → Family → Variant)
 class AppTheme {
   // Private constructor to prevent instantiation
   AppTheme._();
 
-  /// Get theme data for a specific Catppuccin flavor
-  static ThemeData getTheme(String flavorName) {
-    final palette = CatppuccinColors.getPalette(flavorName);
-    final colorScheme = palette.toColorScheme();
+  /// Get theme data for a specific theme configuration
+  static ThemeData getTheme(ThemeConfig config) {
+    final registry = ThemeRegistry();
+    final tokens = registry.getTokens(config);
+    return _buildThemeData(tokens);
+  }
 
-    // Set system UI overlay style based on theme
-    _setSystemUIOverlayStyle(palette);
+  /// Get theme data by family and variant IDs
+  static ThemeData getThemeByIds(String familyId, String variantId) {
+    final registry = ThemeRegistry();
+
+    // Find the family
+    final family = ThemeFamily.values.firstWhere(
+      (f) => f.id == familyId,
+      orElse: () => ThemeFamily.catppuccin,
+    );
+
+    // Find the configuration
+    final config = registry.findConfiguration(family, variantId);
+    if (config != null) {
+      return getTheme(config);
+    }
+
+    // Fallback to default
+    return defaultTheme;
+  }
+
+  /// Build ThemeData from semantic tokens
+  static ThemeData _buildThemeData(SemanticTokens tokens) {
+    final colorScheme = tokens.toColorScheme();
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      brightness: palette.brightness,
+      brightness: tokens.brightness,
+      scaffoldBackgroundColor: tokens.bgBase,
 
-      // Typography with proper contrast
-      textTheme: _buildTextTheme(palette),
+      // Typography with semantic tokens
+      textTheme: _buildTextTheme(tokens),
 
-      // Enhanced component themes
-      appBarTheme: _buildAppBarTheme(palette),
-      cardTheme: _buildCardTheme(palette),
-      elevatedButtonTheme: _buildElevatedButtonTheme(palette),
-      filledButtonTheme: _buildFilledButtonTheme(palette),
-      outlinedButtonTheme: _buildOutlinedButtonTheme(palette),
-      floatingActionButtonTheme: _buildFABTheme(palette),
-      bottomNavigationBarTheme: _buildBottomNavTheme(palette),
-      navigationBarTheme: _buildNavigationBarTheme(palette),
-      listTileTheme: _buildListTileTheme(palette),
-      inputDecorationTheme: _buildInputTheme(palette),
-      dividerTheme: _buildDividerTheme(palette),
-      scaffoldBackgroundColor: palette.base,
+      // Enhanced component themes using semantic tokens
+      appBarTheme: _buildAppBarTheme(tokens),
+      cardTheme: _buildCardTheme(tokens),
+      elevatedButtonTheme: _buildElevatedButtonTheme(tokens),
+      filledButtonTheme: _buildFilledButtonTheme(tokens),
+      outlinedButtonTheme: _buildOutlinedButtonTheme(tokens),
+      floatingActionButtonTheme: _buildFABTheme(tokens),
+      bottomNavigationBarTheme: _buildBottomNavTheme(tokens),
+      navigationBarTheme: _buildNavigationBarTheme(tokens),
+      listTileTheme: _buildListTileTheme(tokens),
+      inputDecorationTheme: _buildInputTheme(tokens),
+      dividerTheme: _buildDividerTheme(tokens),
 
       // Page transitions
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -48,374 +78,292 @@ class AppTheme {
     );
   }
 
-  /// Set system UI overlay style for proper status bar
-  static void _setSystemUIOverlayStyle(CatppuccinPalette palette) {
-    final overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: palette.brightness == Brightness.dark
-          ? Brightness.light
-          : Brightness.dark,
-      statusBarBrightness: palette.brightness,
-      systemNavigationBarColor: palette.base,
-      systemNavigationBarIconBrightness: palette.brightness == Brightness.dark
-          ? Brightness.light
-          : Brightness.dark,
-    );
+  // === Theme Building Methods ===
 
-    SystemChrome.setSystemUIOverlayStyle(overlayStyle);
-  }
-
-  /// Build text theme with proper contrast ratios
-  static TextTheme _buildTextTheme(CatppuccinPalette palette) {
+  static TextTheme _buildTextTheme(SemanticTokens tokens) {
     return TextTheme(
       // Display styles - for large, dramatic text
       displayLarge: TextStyle(
         fontSize: 57,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingTight,
-        height: DesignTokens.lineHeightTight,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       displayMedium: TextStyle(
         fontSize: 45,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightTight,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       displaySmall: TextStyle(
         fontSize: 36,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightTight,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
 
       // Headline styles - for page titles and section headers
       headlineLarge: TextStyle(
         fontSize: 32,
         fontWeight: FontWeight.w600,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightTight,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       headlineMedium: TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.w600,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightTight,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       headlineSmall: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w600,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
 
       // Title styles - for card titles and list items
       titleLarge: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       titleMedium: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingLoose,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       titleSmall: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingLoose,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.text,
-      ),
-
-      // Label styles - for buttons and small text
-      labelLarge: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingLoose,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.text,
-      ),
-      labelMedium: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingWide,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.subtext0,
-      ),
-      labelSmall: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        letterSpacing: DesignTokens.letterSpacingWide,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.subtext0,
+        color: tokens.textPrimary,
       ),
 
       // Body styles - for main content text
       bodyLarge: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingLoose,
-        height: DesignTokens.lineHeightLoose,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
       bodyMedium: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingLoose,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.subtext1,
+        color: tokens.textSecondary,
       ),
       bodySmall: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        letterSpacing: DesignTokens.letterSpacingNormal,
-        height: DesignTokens.lineHeightNormal,
-        color: palette.subtext0,
+        color: tokens.textTertiary,
+      ),
+
+      // Label styles - for buttons and small text
+      labelLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: tokens.textPrimary,
+      ),
+      labelMedium: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: tokens.textSecondary,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: tokens.textTertiary,
       ),
     );
   }
 
-  /// Build app bar theme
-  static AppBarTheme _buildAppBarTheme(CatppuccinPalette palette) {
+  static AppBarTheme _buildAppBarTheme(SemanticTokens tokens) {
     return AppBarTheme(
-      elevation: DesignTokens.elevationNone,
+      elevation: 0,
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      foregroundColor: palette.text,
+      foregroundColor: tokens.textPrimary,
       titleTextStyle: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: palette.text,
+        color: tokens.textPrimary,
       ),
-      iconTheme: IconThemeData(
-        color: palette.text,
-        size: DesignTokens.iconSizeL,
-      ),
-      systemOverlayStyle: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: palette.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-      ),
+      iconTheme: IconThemeData(color: tokens.textPrimary, size: 24),
     );
   }
 
-  /// Build card theme with proper Catppuccin styling
-  static CardThemeData _buildCardTheme(CatppuccinPalette palette) {
+  static CardThemeData _buildCardTheme(SemanticTokens tokens) {
     return CardThemeData(
-      elevation: DesignTokens.elevationS,
-      color: palette.surface0,
-      shadowColor: palette.crust.withValues(alpha: 0.1),
+      elevation: 1,
+      color: tokens.bgSecondary,
+      shadowColor: tokens.bgBase.withValues(alpha: 0.1),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusL),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
 
-  /// Build elevated button theme
   static ElevatedButtonThemeData _buildElevatedButtonTheme(
-    CatppuccinPalette palette,
+    SemanticTokens tokens,
   ) {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        elevation: DesignTokens.elevationS,
-        backgroundColor: palette.surface1,
-        foregroundColor: palette.text,
+        elevation: 1,
+        backgroundColor: tokens.bgSecondary,
+        foregroundColor: tokens.textPrimary,
         shadowColor: Colors.transparent,
-        padding: DesignTokens.spaceM,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radiusXL),
-        ),
-        minimumSize: const Size(
-          DesignTokens.touchTargetMinSize,
-          DesignTokens.touchTargetMinSize,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        minimumSize: const Size(44, 44),
       ),
     );
   }
 
-  /// Build filled button theme
-  static FilledButtonThemeData _buildFilledButtonTheme(
-    CatppuccinPalette palette,
-  ) {
+  static FilledButtonThemeData _buildFilledButtonTheme(SemanticTokens tokens) {
     return FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        elevation: DesignTokens.elevationNone,
-        backgroundColor: palette.mauve,
-        foregroundColor: palette.base,
-        padding: DesignTokens.spaceM,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radiusXL),
-        ),
-        minimumSize: const Size(
-          DesignTokens.touchTargetMinSize,
-          DesignTokens.touchTargetMinSize,
-        ),
+        elevation: 0,
+        backgroundColor: tokens.accentPrimary,
+        foregroundColor: tokens.textInverse,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        minimumSize: const Size(44, 44),
       ),
     );
   }
 
-  /// Build outlined button theme
   static OutlinedButtonThemeData _buildOutlinedButtonTheme(
-    CatppuccinPalette palette,
+    SemanticTokens tokens,
   ) {
     return OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: palette.mauve,
-        side: BorderSide(color: palette.overlay0),
-        padding: DesignTokens.spaceM,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.radiusXL),
-        ),
-        minimumSize: const Size(
-          DesignTokens.touchTargetMinSize,
-          DesignTokens.touchTargetMinSize,
-        ),
+        foregroundColor: tokens.accentPrimary,
+        side: BorderSide(color: tokens.borderPrimary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        minimumSize: const Size(44, 44),
       ),
     );
   }
 
-  /// Build floating action button theme
-  static FloatingActionButtonThemeData _buildFABTheme(
-    CatppuccinPalette palette,
-  ) {
+  static FloatingActionButtonThemeData _buildFABTheme(SemanticTokens tokens) {
     return FloatingActionButtonThemeData(
-      elevation: DesignTokens.elevationL,
-      backgroundColor: palette.mauve,
-      foregroundColor: palette.base,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusXL),
-      ),
+      elevation: 4,
+      backgroundColor: tokens.accentPrimary,
+      foregroundColor: tokens.textInverse,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
 
-  /// Build bottom navigation theme
   static BottomNavigationBarThemeData _buildBottomNavTheme(
-    CatppuccinPalette palette,
+    SemanticTokens tokens,
   ) {
     return BottomNavigationBarThemeData(
-      backgroundColor: palette.mantle,
-      selectedItemColor: palette.mauve,
-      unselectedItemColor: palette.subtext0,
+      backgroundColor: tokens.surfaceNavigation,
+      selectedItemColor: tokens.accentPrimary,
+      unselectedItemColor: tokens.textSecondary,
       type: BottomNavigationBarType.fixed,
-      elevation: DesignTokens.elevationM,
+      elevation: 2,
     );
   }
 
-  /// Build navigation bar theme (Material 3)
   static NavigationBarThemeData _buildNavigationBarTheme(
-    CatppuccinPalette palette,
+    SemanticTokens tokens,
   ) {
     return NavigationBarThemeData(
-      backgroundColor: palette.mantle,
-      indicatorColor: palette.surface2,
+      backgroundColor: tokens.surfaceNavigation,
+      indicatorColor: tokens.surfaceSelected,
       surfaceTintColor: Colors.transparent,
-      elevation: DesignTokens.elevationM,
+      elevation: 2,
       labelTextStyle: WidgetStatePropertyAll(
         TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: palette.subtext0,
+          color: tokens.textSecondary,
         ),
       ),
       iconTheme: WidgetStatePropertyAll(
-        IconThemeData(color: palette.subtext0, size: DesignTokens.iconSizeL),
+        IconThemeData(color: tokens.textSecondary, size: 24),
       ),
     );
   }
 
-  /// Build list tile theme
-  static ListTileThemeData _buildListTileTheme(CatppuccinPalette palette) {
+  static ListTileThemeData _buildListTileTheme(SemanticTokens tokens) {
     return ListTileThemeData(
-      contentPadding: DesignTokens.spaceHorizontalM,
-      minVerticalPadding: DesignTokens.spaceS.top,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusS),
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      minVerticalPadding: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       tileColor: Colors.transparent,
-      selectedTileColor: palette.surface0,
-      textColor: palette.text,
-      iconColor: palette.subtext0,
+      selectedTileColor: tokens.surfaceSelected,
+      textColor: tokens.textPrimary,
+      iconColor: tokens.textSecondary,
     );
   }
 
-  /// Build input decoration theme
-  static InputDecorationTheme _buildInputTheme(CatppuccinPalette palette) {
+  static InputDecorationTheme _buildInputTheme(SemanticTokens tokens) {
     return InputDecorationTheme(
       filled: true,
-      fillColor: palette.surface0,
-      contentPadding: DesignTokens.cardPadding,
+      fillColor: tokens.surfaceInput,
+      contentPadding: const EdgeInsets.all(16),
 
       // Border styles
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        borderSide: BorderSide(color: palette.overlay0),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: tokens.borderPrimary),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        borderSide: BorderSide(color: palette.overlay0),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: tokens.borderPrimary),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        borderSide: BorderSide(color: palette.mauve, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: tokens.borderFocus, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        borderSide: BorderSide(color: palette.red),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: tokens.borderError),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        borderSide: BorderSide(color: palette.red, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: tokens.borderError, width: 2),
       ),
 
       // Label and hint styling
       labelStyle: TextStyle(
-        color: palette.subtext0,
+        color: tokens.textSecondary,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
       floatingLabelStyle: TextStyle(
-        color: palette.mauve,
+        color: tokens.accentPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: TextStyle(
-        color: palette.subtext0.withValues(alpha: 0.7),
-        fontSize: 16,
-      ),
-      helperStyle: TextStyle(color: palette.subtext0, fontSize: 12),
-      errorStyle: TextStyle(color: palette.red, fontSize: 12),
+      hintStyle: TextStyle(color: tokens.textTertiary, fontSize: 16),
+      helperStyle: TextStyle(color: tokens.textSecondary, fontSize: 12),
+      errorStyle: TextStyle(color: tokens.stateError, fontSize: 12),
     );
   }
 
-  /// Build divider theme
-  static DividerThemeData _buildDividerTheme(CatppuccinPalette palette) {
-    return DividerThemeData(thickness: 1, space: 1, color: palette.overlay0);
+  static DividerThemeData _buildDividerTheme(SemanticTokens tokens) {
+    return DividerThemeData(
+      thickness: 1,
+      space: 1,
+      color: tokens.borderSecondary,
+    );
   }
 
-  /// Get all available theme flavors
-  static List<String> get availableFlavors => [
-    'Latte',
-    'Frappé',
-    'Macchiato',
-    'Mocha',
-  ];
+  // === Public API ===
 
-  /// Default theme (Mocha)
-  static ThemeData get defaultTheme => getTheme('Mocha');
+  /// Get all available theme families
+  static List<ThemeFamily> get availableFamilies => ThemeFamily.values;
+
+  /// Get all available theme configurations
+  static List<ThemeConfig> get availableConfigurations {
+    final registry = ThemeRegistry();
+    return registry.allConfigurations;
+  }
+
+  /// Default theme (Catppuccin Mocha for app identity preservation)
+  static ThemeData get defaultTheme => getTheme(QuickAccess.catppuccinMocha);
+
+  /// Quick access themes
+  static ThemeData get catppuccinMocha => getTheme(QuickAccess.catppuccinMocha);
+  static ThemeData get catppuccinLatte => getTheme(QuickAccess.catppuccinLatte);
+  static ThemeData get draculaStandard => getTheme(QuickAccess.draculaStandard);
+  static ThemeData get nordPolarNight => getTheme(QuickAccess.nordPolarNight);
+  static ThemeData get nordSnowStorm => getTheme(QuickAccess.nordSnowStorm);
 }
 
 /// Legacy compatibility - keeping for existing code that expects these names
-ThemeData get lightMode => AppTheme.getTheme('Latte');
-ThemeData get darkMode => AppTheme.getTheme('Mocha');
+/// These will map to Catppuccin themes to preserve app identity
+ThemeData get lightMode => AppTheme.catppuccinLatte;
+ThemeData get darkMode => AppTheme.catppuccinMocha;

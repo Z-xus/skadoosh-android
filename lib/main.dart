@@ -21,7 +21,7 @@ void main() async {
 
   // Initialize theme provider and load saved theme
   final themeProvider = ThemeProvider();
-  await themeProvider.loadTheme();
+  await themeProvider.initialize();
 
   runApp(
     MultiProvider(
