@@ -1,12 +1,13 @@
 [x] Diff based syncing.
 [ ] Internal file storing - import/export
 [x] Make convience, try key exchange, and easy to connect multiple devices.
-[ ] Fully trash, move to across all to trash.
-[ ] hide notes
+[x] Fully trash, move to across all to trash.
+[x] hide notes (archive)
 [ ] folder (notebooks)
-[ ] click to edit
+[x] click to edit
 [ ] tags
 [ ] search
+[ ] todos support
 [x] markdown support
 [ ] images
 [ ] reminders
@@ -23,9 +24,7 @@
 [ ] templates
 [ ] export to PDF/HTML
 [ ] collaboration features
-[ ] voice notes
-[ ] handwriting support
-[ ] customizable themes
+[x] custom themes
 [ ] integration with other apps (e.g., calendar, email)
 [ ] AI-powered note suggestions
 [ ] QR 

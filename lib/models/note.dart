@@ -31,6 +31,10 @@ class Note {
   bool isDeleted = false;
   DateTime? deletedAt;
 
+  // Archive functionality
+  bool isArchived = false;
+  DateTime? archivedAt;
+
   // Sync-related fields
   String? serverId; // UUID from server
   DateTime? createdAt;
@@ -47,6 +51,9 @@ class Note {
 
   // Helper method to check if note is in trash
   bool get isInTrash => isDeleted && !shouldPermanentlyDelete;
+
+  // Helper method to check if note is active (not archived and not deleted)
+  bool get isActive => !isArchived && !isDeleted;
 
   // NEW: Helper method to get content from storage
   Future<String> getContent() async {

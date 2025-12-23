@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:skadoosh_app/components/drawer_tile.dart';
 import 'package:skadoosh_app/pages/settings.dart';
 import 'package:skadoosh_app/pages/device_management_page.dart';
+import 'package:skadoosh_app/pages/archived_notes_page.dart';
+import 'package:skadoosh_app/pages/trash_page.dart';
 import 'package:skadoosh_app/theme/design_tokens.dart';
 
 class MyDrawer extends StatelessWidget {
@@ -87,6 +89,25 @@ class MyDrawer extends StatelessWidget {
                   leading: const Icon(Icons.note_rounded),
                   onTap: () => Navigator.pop(context),
                   isSelected: true,
+                ),
+
+                SizedBox(height: DesignTokens.spaceXS.top),
+
+                // Archive tile
+                DrawerTile(
+                  title: "Archive",
+                  leading: const Icon(Icons.archive_rounded),
+                  onTap: () =>
+                      _navigateToPage(context, const ArchivedNotesPage()),
+                ),
+
+                SizedBox(height: DesignTokens.spaceXS.top),
+
+                // Trash tile
+                DrawerTile(
+                  title: "Trash",
+                  leading: const Icon(Icons.delete_rounded),
+                  onTap: () => _navigateToPage(context, const TrashPage()),
                 ),
 
                 SizedBox(height: DesignTokens.spaceXS.top),

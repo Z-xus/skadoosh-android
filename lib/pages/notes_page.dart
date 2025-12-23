@@ -168,6 +168,11 @@ class _NotesPageState extends State<NotesPage>
     _showMessage('Note moved to trash', isSuccess: true);
   }
 
+  void _archiveNote(int id) {
+    context.read<NoteDatabase>().archiveNote(id);
+    _showMessage('Note archived', isSuccess: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -252,10 +257,11 @@ class _NotesPageState extends State<NotesPage>
                         final note = notes[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
-                          child: _MinimalNoteTile(
+                          child: _SwipeableNoteTile(
                             key: ValueKey(note.id),
                             note: note,
                             onTap: () => _updateNote(note),
+                            onArchive: () => _archiveNote(note.id),
                             onDelete: () => _moveNoteToTrash(note.id),
                           ),
                         );
@@ -272,18 +278,90 @@ class _NotesPageState extends State<NotesPage>
   }
 }
 
-/// A local, optimized tile widget to ensure strict minimalist design
-class _MinimalNoteTile extends StatelessWidget {
+/// A swipeable note tile with dynamic containers for archive and delete actions
+class _SwipeableNoteTile extends StatefulWidget {
   final Note note;
   final VoidCallback onTap;
+  final VoidCallback onArchive;
   final VoidCallback onDelete;
 
-  const _MinimalNoteTile({
+  const _SwipeableNoteTile({
     super.key,
     required this.note,
     required this.onTap,
+    required this.onArchive,
     required this.onDelete,
   });
+
+  @override
+  State<_SwipeableNoteTile> createState() => _SwipeableNoteTileState();
+}
+
+class _SwipeableNoteTileState extends State<_SwipeableNoteTile>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  double _dragDistance = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    // Starting drag
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragDistance += details.delta.dx;
+      _dragDistance = _dragDistance.clamp(-150.0, 150.0);
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    // Determine action based on drag distance
+    if (_dragDistance > 80) {
+      // Right swipe - archive
+      _executeArchive();
+    } else if (_dragDistance < -80) {
+      // Left swipe - delete
+      _executeDelete();
+    } else {
+      // Reset position
+      _resetPosition();
+    }
+  }
+
+  void _executeArchive() {
+    _animationController.forward().then((_) {
+      widget.onArchive();
+      _resetPosition();
+    });
+  }
+
+  void _executeDelete() {
+    _animationController.forward().then((_) {
+      widget.onDelete();
+      _resetPosition();
+    });
+  }
+
+  void _resetPosition() {
+    setState(() {
+      _dragDistance = 0.0;
+    });
+    _animationController.reverse();
+  }
 
   // Helper to format date cleanly
   String _formatDate(DateTime? date) {
@@ -305,85 +383,161 @@ class _MinimalNoteTile extends StatelessWidget {
     final textTheme = theme.textTheme;
 
     // Use the actual updatedAt from your model
-    final dateString = _formatDate(note.updatedAt);
+    final dateString = _formatDate(widget.note.updatedAt);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onDelete,
-        borderRadius: BorderRadius.circular(12),
-        // The Border: Subtle, single distinct line
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              if (note.title.isNotEmpty) ...[
-                Text(
-                  note.title,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+    // Calculate container dimensions based on drag distance
+    double containerWidth = 0;
+    IconData? actionIcon;
+    Color? actionIconColor;
+    Color? containerColor;
+    bool showLeftContainer = false;
+    bool showRightContainer = false;
+
+    if (_dragDistance > 15) {
+      // Right swipe - archive
+      containerWidth = _dragDistance.abs().clamp(0.0, 120.0);
+      containerColor = Colors.amber.shade200;
+      actionIcon = Icons.archive_rounded;
+      actionIconColor = Colors.amber.shade800;
+      showLeftContainer = true;
+    } else if (_dragDistance < -15) {
+      // Left swipe - delete
+      containerWidth = _dragDistance.abs().clamp(0.0, 120.0);
+      containerColor = Colors.red.shade200;
+      actionIcon = Icons.delete_rounded;
+      actionIconColor = Colors.red.shade800;
+      showRightContainer = true;
+    }
+
+    return GestureDetector(
+      onPanStart: _onPanStart,
+      onPanUpdate: _onPanUpdate,
+      onPanEnd: _onPanEnd,
+      child: SizedBox(
+        height: 80, // Fixed height for consistent container sizing
+        child: Stack(
+          children: [
+            // Left container (archive - yellow)
+            if (showLeftContainer)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: containerWidth,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: containerColor,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-              ],
-
-              // Content Preview - CHANGED from note.content to note.body
-              if (note.body.isNotEmpty) ...[
-                Text(
-                  note.body,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // Metadata Row: Date & Sync on ONE line
-              Row(
-                children: [
-                  // Date
-                  Text(
-                    dateString,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: colorScheme.outline,
-                      fontWeight: FontWeight.w500,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Icon(
+                        actionIcon!,
+                        color: actionIconColor,
+                        size: 24,
+                      ),
                     ),
                   ),
-
-                  const Spacer(),
-
-                  // Sync Status Indicator (Compact)
-                  // Using needsSync logic from your model
-                  Icon(
-                    note.needsSync
-                        ? Icons.cloud_upload_rounded
-                        : Icons.cloud_done_rounded,
-                    size: 14,
-                    color: note.needsSync
-                        ? colorScheme.primary.withValues(alpha: 0.6)
-                        : colorScheme.outline.withValues(alpha: 0.5),
-                  ),
-                ],
+                ),
               ),
-            ],
-          ),
+
+            // Right container (delete - red)
+            // FIXED: Using single block with Align(centerRight)
+            if (showRightContainer)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: containerWidth,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: containerColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: Icon(
+                        actionIcon!,
+                        color: actionIconColor,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // Main note tile that moves
+            Transform.translate(
+              offset: Offset(_dragDistance * 0.5, 0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title
+                        if (widget.note.title.isNotEmpty) ...[
+                          Text(
+                            widget.note.title,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                        ],
+
+                        // Metadata Row: Date & Sync on ONE line
+                        Row(
+                          children: [
+                            // Date
+                            Text(
+                              dateString,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: colorScheme.outline,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            // Sync Status Indicator (Compact)
+                            Icon(
+                              widget.note.needsSync
+                                  ? Icons.cloud_upload_rounded
+                                  : Icons.cloud_done_rounded,
+                              size: 14,
+                              color: widget.note.needsSync
+                                  ? Colors.orange.shade600
+                                  : Colors.green.shade600,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

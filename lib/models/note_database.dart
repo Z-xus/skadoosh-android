@@ -55,7 +55,8 @@ class NoteDatabase extends ChangeNotifier {
       ..createdAt = now
       ..updatedAt = now
       ..needsSync = true
-      ..isDeleted = false;
+      ..isDeleted = false
+      ..isArchived = false;
 
     await isar.writeTxn(() async {
       await isar.notes.put(newNote);
@@ -89,7 +90,8 @@ class NoteDatabase extends ChangeNotifier {
       ..createdAt = now
       ..updatedAt = now
       ..needsSync = needsSync
-      ..isDeleted = false;
+      ..isDeleted = false
+      ..isArchived = false;
 
     await isar.writeTxn(() async {
       await isar.notes.put(newNote);
@@ -106,8 +108,10 @@ class NoteDatabase extends ChangeNotifier {
   Future<void> fetchNotes() async {
     List<Note> fetchNotes = await isar.notes.where().findAll();
     currentNotes.clear();
-    // Filter out deleted notes in the app logic for now
-    currentNotes.addAll(fetchNotes.where((note) => !note.isDeleted));
+    // Filter out deleted and archived notes in the app logic for now
+    currentNotes.addAll(
+      fetchNotes.where((note) => !note.isDeleted && !note.isArchived),
+    );
     notifyListeners();
   }
 
@@ -121,6 +125,14 @@ class NoteDatabase extends ChangeNotifier {
     final allNotes = await isar.notes.where().findAll();
     return allNotes
         .where((note) => note.isDeleted && !note.shouldPermanentlyDelete)
+        .toList();
+  }
+
+  // get archived notes
+  Future<List<Note>> getArchivedNotes() async {
+    final allNotes = await isar.notes.where().findAll();
+    return allNotes
+        .where((note) => note.isArchived && !note.isDeleted)
         .toList();
   }
 
@@ -142,6 +154,42 @@ class NoteDatabase extends ChangeNotifier {
       if (relativePath == null && fileName != null) {
         existingNote.relativePath = fileName;
       }
+      existingNote.updatedAt = DateTime.now();
+      existingNote.needsSync = true;
+
+      await isar.writeTxn(() async {
+        await isar.notes.put(existingNote);
+      });
+      await fetchNotes();
+    }
+  }
+
+  // archive note
+  Future<void> archiveNote(int id) async {
+    final existingNote = await isar.notes.get(id);
+    if (existingNote != null &&
+        !existingNote.isDeleted &&
+        !existingNote.isArchived) {
+      existingNote.isArchived = true;
+      existingNote.archivedAt = DateTime.now();
+      existingNote.updatedAt = DateTime.now();
+      existingNote.needsSync = true;
+
+      await isar.writeTxn(() async {
+        await isar.notes.put(existingNote);
+      });
+      await fetchNotes();
+    }
+  }
+
+  // unarchive note
+  Future<void> unarchiveNote(int id) async {
+    final existingNote = await isar.notes.get(id);
+    if (existingNote != null &&
+        existingNote.isArchived &&
+        !existingNote.isDeleted) {
+      existingNote.isArchived = false;
+      existingNote.archivedAt = null;
       existingNote.updatedAt = DateTime.now();
       existingNote.needsSync = true;
 
