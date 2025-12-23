@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
-import 'package:skadoosh_app/theme/catppuccin_colors.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
 
 class EditNotePage extends StatefulWidget {
@@ -155,15 +154,18 @@ class _EditNotePageState extends State<EditNotePage> {
   }
 
   // --- Modern Floating Toolbar Configuration ---
-  Widget _buildModernFloatingToolbar(CatppuccinPalette palette) {
+  Widget _buildModernFloatingToolbar() {
+    final themeProvider = context.watch<ThemeProvider>();
+    final tokens = themeProvider.currentTokens;
+
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
       decoration: BoxDecoration(
-        color: palette.surface1,
+        color: tokens.bgSecondary,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: palette.crust.withValues(alpha: 0.1),
+            color: tokens.bgBase.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -178,31 +180,26 @@ class _EditNotePageState extends State<EditNotePage> {
               icon: Icons.format_bold_rounded,
               isSelected: _isFormatActive('bold'),
               onTap: () => _toggleFormat('bold'),
-              palette: palette,
             ),
             _buildToolbarButton(
               icon: Icons.format_italic_rounded,
               isSelected: _isFormatActive('italic'),
               onTap: () => _toggleFormat('italic'),
-              palette: palette,
             ),
             _buildToolbarButton(
               icon: Icons.format_underlined_rounded,
               isSelected: _isFormatActive('underline'),
               onTap: () => _toggleFormat('underline'),
-              palette: palette,
             ),
             _buildToolbarButton(
               icon: Icons.title_rounded,
               isSelected: _isFormatActive('heading'),
               onTap: () => _toggleHeading(),
-              palette: palette,
             ),
             _buildToolbarButton(
               icon: Icons.format_list_bulleted_rounded,
               isSelected: _isFormatActive('bulleted_list'),
               onTap: () => _toggleBulletList(),
-              palette: palette,
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -211,14 +208,12 @@ class _EditNotePageState extends State<EditNotePage> {
                   icon: Icons.undo_rounded,
                   isSelected: false,
                   onTap: () => _editorState.undoManager.undo(),
-                  palette: palette,
                 ),
                 const SizedBox(width: 4),
                 _buildToolbarButton(
                   icon: Icons.redo_rounded,
                   isSelected: false,
                   onTap: () => _editorState.undoManager.redo(),
-                  palette: palette,
                 ),
               ],
             ),
@@ -232,8 +227,10 @@ class _EditNotePageState extends State<EditNotePage> {
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
-    required CatppuccinPalette palette,
   }) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final tokens = themeProvider.currentTokens;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -242,14 +239,14 @@ class _EditNotePageState extends State<EditNotePage> {
         height: 44,
         decoration: BoxDecoration(
           color: isSelected
-              ? palette.mauve.withValues(alpha: 0.2)
+              ? tokens.accentPrimary.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
           size: 24,
-          color: isSelected ? palette.mauve : palette.subtext0,
+          color: isSelected ? tokens.accentPrimary : tokens.textSecondary,
         ),
       ),
     );
@@ -385,9 +382,9 @@ class _EditNotePageState extends State<EditNotePage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
-    final palette = CatppuccinColors.getPalette(themeProvider.currentFlavor);
-    final textColor = palette.text;
-    final bgColor = palette.base;
+    final tokens = themeProvider.currentTokens;
+    final textColor = tokens.textPrimary;
+    final bgColor = tokens.bgBase;
 
     // Get keyboard height for proper positioning
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
@@ -421,7 +418,9 @@ class _EditNotePageState extends State<EditNotePage> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: palette.overlay0.withValues(alpha: 0.2),
+                              color: tokens.borderSecondary.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                           child: Icon(Icons.close, size: 20, color: textColor),
@@ -442,7 +441,9 @@ class _EditNotePageState extends State<EditNotePage> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: palette.overlay0.withValues(alpha: 0.2),
+                              color: tokens.borderSecondary.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                           child: Icon(Icons.check, size: 20, color: textColor),
@@ -465,9 +466,11 @@ class _EditNotePageState extends State<EditNotePage> {
                           horizontal: 16, // Reduced padding
                           vertical: 8,
                         ),
-                        cursorColor: palette.mauve,
-                        selectionColor: palette.mauve.withValues(alpha: 0.2),
-                        dragHandleColor: palette.mauve,
+                        cursorColor: tokens.accentPrimary,
+                        selectionColor: tokens.accentPrimary.withValues(
+                          alpha: 0.2,
+                        ),
+                        dragHandleColor: tokens.accentPrimary,
                         textStyleConfiguration: TextStyleConfiguration(
                           text: TextStyle(
                             fontSize: 17,
@@ -494,7 +497,7 @@ class _EditNotePageState extends State<EditNotePage> {
             left: 0,
             right: 0,
             bottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16,
-            child: _buildModernFloatingToolbar(palette),
+            child: _buildModernFloatingToolbar(),
           ),
         ],
       ),

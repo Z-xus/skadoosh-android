@@ -314,7 +314,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               Card(
                 // elevation: 0,
                 borderOnForeground: true,
-                color: Theme.of(context).colorScheme.inverseSurface,
+                color: Theme.of(context).colorScheme.onSecondary,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -372,7 +372,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
                     backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

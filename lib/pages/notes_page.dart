@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skadoosh_app/components/drawer.dart';
-import 'package:skadoosh_app/components/note_tile.dart';
+// Note: We are replacing the external NoteTile with a local _MinimalNoteTile
+// to fix the layout issues directly in this file.
+// import 'package:skadoosh_app/components/note_tile.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/key_based_sync_service.dart';
@@ -177,8 +179,15 @@ class _NotesPageState extends State<NotesPage>
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
+        title: Text(
+          'Notes',
+          style: textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
         actions: [
-          // Sync button with accessibility
           Semantics(
             label: _isSyncing
                 ? 'Syncing notes in progress'
@@ -188,8 +197,8 @@ class _NotesPageState extends State<NotesPage>
               onPressed: _isSyncing ? null : _performSync,
               icon: _isSyncing
                   ? SizedBox(
-                      width: DesignTokens.iconSizeM,
-                      height: DesignTokens.iconSizeM,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
@@ -199,94 +208,179 @@ class _NotesPageState extends State<NotesPage>
                     )
                   : Icon(
                       Icons.sync_rounded,
-                      color: colorScheme.onSurface,
-                      size: DesignTokens.iconSizeL,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 22,
                     ),
               tooltip: _isSyncing ? 'Syncing...' : 'Sync notes',
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       backgroundColor: colorScheme.surface,
       drawer: const MyDrawer(),
-      floatingActionButton: Semantics(
-        label: 'Create new note',
-        button: true,
-        child: FloatingActionButton(
-          onPressed: _createNote,
-          heroTag: 'create_note',
-          tooltip: 'Create note',
-          child: const Icon(Icons.add_rounded),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createNote,
+        elevation: 2,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add_rounded),
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: RefreshIndicator(
           onRefresh: _performSync,
           color: colorScheme.primary,
-          backgroundColor: colorScheme.surfaceContainerHigh,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              // Page header with proper typography
-              SliverToBoxAdapter(
-                child: Container(
-                  padding: DesignTokens.pageMargin.copyWith(
-                    top: DesignTokens.spaceL.top,
-                    bottom: DesignTokens.spaceM.bottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Main heading with proper hierarchy
-                      Text(
-                        'Notes',
-                        style: textTheme.headlineLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+          child: Consumer<NoteDatabase>(
+            builder: (context, noteDatabase, child) {
+              final notes = noteDatabase.currentNotes;
 
-                      // Sync status indicator
-                      if (_isSyncing) ...[
-                        SizedBox(height: DesignTokens.spaceM.top),
-                        _SyncStatusIndicator(theme: theme),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+              if (notes.isEmpty) {
+                return _EmptyNotesView(onCreateNote: _createNote, theme: theme);
+              }
 
-              // Notes list or empty state
-              Consumer<NoteDatabase>(
-                builder: (context, noteDatabase, child) {
-                  final notes = noteDatabase.currentNotes;
-
-                  if (notes.isEmpty) {
-                    return SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyNotesView(
-                        onCreateNote: _createNote,
-                        theme: theme,
-                      ),
-                    );
-                  }
-
-                  return SliverPadding(
-                    padding: DesignTokens.spaceHorizontalM,
+              return CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final note = notes[index];
-                        return NoteTile(
-                          key: ValueKey(note.id),
-                          note: note,
-                          onEditPressed: () => _updateNote(note),
-                          onDeletePressed: () => _moveNoteToTrash(note.id),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: _MinimalNoteTile(
+                            key: ValueKey(note.id),
+                            note: note,
+                            onTap: () => _updateNote(note),
+                            onDelete: () => _moveNoteToTrash(note.id),
+                          ),
                         );
                       }, childCount: notes.length),
                     ),
-                  );
-                },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A local, optimized tile widget to ensure strict minimalist design
+class _MinimalNoteTile extends StatelessWidget {
+  final Note note;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _MinimalNoteTile({
+    super.key,
+    required this.note,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  // Helper to format date cleanly
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    // Use the actual updatedAt from your model
+    final dateString = _formatDate(note.updatedAt);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onDelete,
+        borderRadius: BorderRadius.circular(12),
+        // The Border: Subtle, single distinct line
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              if (note.title.isNotEmpty) ...[
+                Text(
+                  note.title,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+              ],
+
+              // Content Preview - CHANGED from note.content to note.body
+              if (note.body.isNotEmpty) ...[
+                Text(
+                  note.body,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Metadata Row: Date & Sync on ONE line
+              Row(
+                children: [
+                  // Date
+                  Text(
+                    dateString,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.outline,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Sync Status Indicator (Compact)
+                  // Using needsSync logic from your model
+                  Icon(
+                    note.needsSync
+                        ? Icons.cloud_upload_rounded
+                        : Icons.cloud_done_rounded,
+                    size: 14,
+                    color: note.needsSync
+                        ? colorScheme.primary.withValues(alpha: 0.6)
+                        : colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                ],
               ),
             ],
           ),
@@ -296,55 +390,7 @@ class _NotesPageState extends State<NotesPage>
   }
 }
 
-// Sync status widget
-class _SyncStatusIndicator extends StatelessWidget {
-  final ThemeData theme;
-
-  const _SyncStatusIndicator({required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
-    return Container(
-      padding: DesignTokens.cardPadding.copyWith(
-        top: DesignTokens.spaceS.top,
-        bottom: DesignTokens.spaceS.bottom,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusM),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: DesignTokens.iconSizeS,
-            height: DesignTokens.iconSizeS,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
-          SizedBox(width: DesignTokens.spaceS.left),
-          Text(
-            'Syncing...',
-            style: textTheme.labelMedium?.copyWith(
-              color: colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Empty state widget
+// Minimalist Empty State
 class _EmptyNotesView extends StatelessWidget {
   final VoidCallback onCreateNote;
   final ThemeData theme;
@@ -354,61 +400,36 @@ class _EmptyNotesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
 
-    return Padding(
-      padding: DesignTokens.pageMarginLarge,
-      child: Transform.translate(
-        offset: const Offset(0, -32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              padding: DesignTokens.spaceL,
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(DesignTokens.radiusXXL),
-              ),
-              child: Icon(
-                Icons.note_add_outlined,
-                size: DesignTokens.iconSizeXXL,
-                color: colorScheme.onSurfaceVariant,
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.edit_note_rounded,
+            size: 64,
+            color: colorScheme.surfaceContainerHighest,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No notes yet',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: onCreateNote,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Create'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colorScheme.primary,
+              side: BorderSide(
+                color: colorScheme.outline.withValues(alpha: 0.3),
               ),
             ),
-            SizedBox(height: DesignTokens.spaceL.top),
-            Text(
-              'Start your first note',
-              style: textTheme.headlineSmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: DesignTokens.spaceS.top),
-            Text(
-              'Capture thoughts, ideas, and reminders securely',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: DesignTokens.spaceXL.top),
-            FilledButton.icon(
-              onPressed: onCreateNote,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Create Note'),
-            ),
-            SizedBox(height: DesignTokens.spaceS.top),
-            Text(
-              'Pull down to sync with your other devices',
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
