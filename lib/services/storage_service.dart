@@ -10,6 +10,11 @@ class StorageService {
   late Directory _baseDir;
   bool _initialized = false;
 
+  // Simple in-memory cache for file operations
+  List<String>? _cachedFileList;
+  DateTime? _cacheTimestamp;
+  static const Duration _cacheExpiry = Duration(seconds: 30);
+
   Future<void> init() async {
     if (_initialized) return;
 
@@ -46,7 +51,41 @@ class StorageService {
     final file = File(p.join(_baseDir.path, filename));
     final result = await file.writeAsString(content);
     print('📝 Note file saved: ${file.path}');
+
+    // Invalidate cache after write
+    _invalidateCache();
+
     return result;
+  }
+
+  /// Get cached file list to reduce I/O operations
+  Future<List<String>> getCachedFileList() async {
+    await init();
+
+    // Check if cache is valid
+    if (_cachedFileList != null &&
+        _cacheTimestamp != null &&
+        DateTime.now().difference(_cacheTimestamp!) < _cacheExpiry) {
+      return _cachedFileList!;
+    }
+
+    // Refresh cache
+    final files = await _baseDir
+        .list()
+        .where((entity) => entity is File && entity.path.endsWith('.md'))
+        .map((entity) => p.basename(entity.path))
+        .toList();
+
+    _cachedFileList = files;
+    _cacheTimestamp = DateTime.now();
+
+    return files;
+  }
+
+  /// Invalidate the file cache
+  void _invalidateCache() {
+    _cachedFileList = null;
+    _cacheTimestamp = null;
   }
 
   Future<String> readNote(String filename) async {
@@ -63,6 +102,8 @@ class StorageService {
     final file = File(p.join(_baseDir.path, filename));
     if (await file.exists()) {
       await file.delete();
+      // Invalidate cache after delete
+      _invalidateCache();
     }
   }
 

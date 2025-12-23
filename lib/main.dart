@@ -10,19 +10,11 @@ import 'pages/user_onboarding_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NoteDatabase.initialize();
 
-  // Initialize StorageService
-  final storageService = StorageService();
-  await storageService.init();
-
-  // Initialize FileWatcherService after StorageService is ready
-  await FileWatcherService().init(storageService.baseDirectoryPath);
-
-  // Initialize theme provider and load saved theme
+  // Initialize theme provider with lightweight default (no SharedPreferences yet)
   final themeProvider = ThemeProvider();
-  await themeProvider.initialize();
 
+  // Show UI immediately
   runApp(
     MultiProvider(
       providers: [
@@ -32,6 +24,28 @@ void main() async {
       child: const MyApp(),
     ),
   );
+
+  // Initialize services in background after UI is shown
+  _initializeServices(themeProvider);
+}
+
+/// Background service initialization with parallel execution where possible
+Future<void> _initializeServices(ThemeProvider themeProvider) async {
+  try {
+    // Phase 1: Initialize critical services in parallel
+    await Future.wait([
+      NoteDatabase.initialize(),
+      StorageService().init(),
+      themeProvider.initialize(), // Load saved preferences
+    ]);
+
+    // Phase 2: Initialize services that depend on others
+    final storageService = StorageService();
+    await FileWatcherService().init(storageService.baseDirectoryPath);
+  } catch (e) {
+    // Handle initialization errors gracefully
+    debugPrint('Service initialization error: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {

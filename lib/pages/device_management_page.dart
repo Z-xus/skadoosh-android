@@ -168,8 +168,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       appBar: AppBar(
         title: const Text('Device Management'),
         elevation: 0,
-        foregroundColor: Theme.of(context).colorScheme.primary,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           IconButton(onPressed: _refreshData, icon: const Icon(Icons.refresh)),
         ],

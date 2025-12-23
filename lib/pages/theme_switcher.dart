@@ -19,10 +19,7 @@ class _ThemeSwitcherPageState extends State<ThemeSwitcherPage> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     // 1. Determine Target Brightness (Light vs Dark)
-    final isDark =
-        themeProvider.mode == registry.AppThemeMode.dark ||
-        (themeProvider.mode == registry.AppThemeMode.system &&
-            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final isDark = themeProvider.mode == registry.AppThemeMode.dark;
     final targetBrightness = isDark ? Brightness.dark : Brightness.light;
 
     // 2. Gather ALL variants from ALL families that match the brightness
@@ -263,7 +260,7 @@ class _ThemeSwitcherPageState extends State<ThemeSwitcherPage> {
           _buildSegmentBtn(
             context,
             "Light",
-            Icons.wb_sunny_rounded,
+            Icons.light_mode_rounded,
             mode == registry.AppThemeMode.light,
             () => provider.setMode(registry.AppThemeMode.light),
           ),
@@ -273,13 +270,6 @@ class _ThemeSwitcherPageState extends State<ThemeSwitcherPage> {
             Icons.dark_mode_rounded,
             mode == registry.AppThemeMode.dark,
             () => provider.setMode(registry.AppThemeMode.dark),
-          ),
-          _buildSegmentBtn(
-            context,
-            "Auto",
-            Icons.auto_awesome_rounded,
-            mode == registry.AppThemeMode.system,
-            () => provider.setMode(registry.AppThemeMode.system),
           ),
         ],
       ),

@@ -85,16 +85,12 @@ class ThemeRegistry {
     }
   }
 
-  /// Get default configuration for system sync mode
-  /// Light system → Light themes, Dark system → Dark themes
+  /// Get default configuration for light mode (Nord Snow Storm)
   ThemeConfig getDefaultForBrightness(Brightness brightness) {
     switch (brightness) {
       case Brightness.light:
-        // Default to Catppuccin Latte for light mode
-        return ThemeConfig(
-          family: ThemeFamily.catppuccin,
-          variant: CatppuccinTokens.variants.firstWhere((v) => v.id == 'latte'),
-        );
+        // Default to Nord Snow Storm for light mode
+        return QuickAccess.nordSnowStorm;
       case Brightness.dark:
         // Default to Catppuccin Mocha for dark mode
         return ThemeConfig(
@@ -104,9 +100,9 @@ class ThemeRegistry {
     }
   }
 
-  /// Get the default theme configuration (preserves app identity)
+  /// Get the default theme configuration (Nord Snow Storm - light theme)
   ThemeConfig get defaultConfiguration =>
-      getDefaultForBrightness(Brightness.dark);
+      getDefaultForBrightness(Brightness.light);
 
   /// Migration helper: Map old Catppuccin flavor names to new configurations
   ThemeConfig? migrateFromLegacyFlavor(String flavorName) {
@@ -176,11 +172,8 @@ class QuickAccess {
   );
 }
 
-/// Theme mode enumeration for system sync functionality
+/// Theme mode enumeration for manual theme selection
 enum AppThemeMode {
-  /// Follow system brightness settings (auto)
-  system,
-
   /// Always use light theme variants
   light,
 
@@ -190,8 +183,6 @@ enum AppThemeMode {
   /// Get human-readable display name
   String get displayName {
     switch (this) {
-      case AppThemeMode.system:
-        return 'System (Auto)';
       case AppThemeMode.light:
         return 'Light';
       case AppThemeMode.dark:
@@ -202,8 +193,6 @@ enum AppThemeMode {
   /// Get description for UI
   String get description {
     switch (this) {
-      case AppThemeMode.system:
-        return 'Follow system settings';
       case AppThemeMode.light:
         return 'Always use light themes';
       case AppThemeMode.dark:

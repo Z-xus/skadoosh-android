@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'base/theme_family.dart';
 import 'base/semantic_tokens.dart';
 import 'theme_registry.dart' as registry;
@@ -19,10 +20,13 @@ class ThemeProvider extends ChangeNotifier {
   late ThemeConfig _selectedConfig;
   bool _initialized = false;
 
+  // SystemChrome debouncing
+  Timer? _systemUIUpdateTimer;
+
   ThemeProvider() {
     _registry = registry.ThemeRegistry();
-    _mode = registry.AppThemeMode.system; // Default to system sync
-    _selectedConfig = _registry.defaultConfiguration; // Fallback
+    _mode = registry.AppThemeMode.light; // Default to light mode
+    _selectedConfig = _registry.defaultConfiguration; // Nord Snow Storm
   }
 
   // === Public Getters ===
@@ -69,6 +73,7 @@ class ThemeProvider extends ChangeNotifier {
     _mode = mode;
     await _savePreferences();
     notifyListeners();
+    _updateSystemUI(); // Update system UI when theme mode changes
   }
 
   /// Set theme family (preserves variant if possible, otherwise uses default)
@@ -90,6 +95,7 @@ class ThemeProvider extends ChangeNotifier {
     _selectedConfig = ThemeConfig(family: family, variant: newVariant);
     await _savePreferences();
     notifyListeners();
+    _updateSystemUI(); // Update system UI when theme family changes
   }
 
   /// Set specific variant within current family
@@ -102,6 +108,7 @@ class ThemeProvider extends ChangeNotifier {
     );
     await _savePreferences();
     notifyListeners();
+    _updateSystemUI(); // Update system UI when theme variant changes
   }
 
   /// Set complete theme configuration
@@ -111,6 +118,7 @@ class ThemeProvider extends ChangeNotifier {
     _selectedConfig = config;
     await _savePreferences();
     notifyListeners();
+    _updateSystemUI(); // Update system UI when complete configuration changes
   }
 
   // === Convenience Methods ===
@@ -134,22 +142,7 @@ class ThemeProvider extends ChangeNotifier {
       case registry.AppThemeMode.dark:
         await setMode(registry.AppThemeMode.light);
         break;
-      case registry.AppThemeMode.system:
-        // When in system mode, toggle to explicit mode opposite of current system
-        final brightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
-        await setMode(
-          brightness == Brightness.light
-              ? registry.AppThemeMode.dark
-              : registry.AppThemeMode.light,
-        );
-        break;
     }
-  }
-
-  /// Enable system sync mode
-  Future<void> enableSystemSync() async {
-    await setMode(registry.AppThemeMode.system);
   }
 
   // === Initialization and Persistence ===
@@ -165,7 +158,7 @@ class ThemeProvider extends ChangeNotifier {
     if (savedMode != null) {
       _mode = registry.AppThemeMode.values.firstWhere(
         (mode) => mode.name == savedMode,
-        orElse: () => registry.AppThemeMode.system,
+        orElse: () => registry.AppThemeMode.light,
       );
     }
 
@@ -181,6 +174,9 @@ class ThemeProvider extends ChangeNotifier {
 
     _initialized = true;
     notifyListeners();
+
+    // Set initial system UI overlay style
+    _updateSystemUI();
   }
 
   /// Save current preferences
@@ -227,12 +223,6 @@ class ThemeProvider extends ChangeNotifier {
   /// Get effective configuration considering current mode
   ThemeConfig _getEffectiveConfig() {
     switch (_mode) {
-      case registry.AppThemeMode.system:
-        // Follow system brightness, use selected family
-        final systemBrightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
-        return _getConfigForBrightness(systemBrightness);
-
       case registry.AppThemeMode.light:
         // Force light variant of selected family
         return _getConfigForBrightness(Brightness.light);
@@ -268,9 +258,6 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData _buildThemeData(SemanticTokens tokens) {
     final colorScheme = tokens.toColorScheme();
 
-    // Set system UI overlay style
-    _setSystemUIOverlayStyle(tokens);
-
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -298,21 +285,28 @@ class ThemeProvider extends ChangeNotifier {
     );
   }
 
-  /// Set system UI overlay style
-  void _setSystemUIOverlayStyle(SemanticTokens tokens) {
-    final overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: tokens.brightness == Brightness.dark
-          ? Brightness.light
-          : Brightness.dark,
-      statusBarBrightness: tokens.brightness,
-      systemNavigationBarColor: tokens.bgBase,
-      systemNavigationBarIconBrightness: tokens.brightness == Brightness.dark
-          ? Brightness.light
-          : Brightness.dark,
-    );
+  /// Update system UI overlay style with debouncing to prevent conflicts
+  void _updateSystemUI() {
+    // Cancel any pending timer to debounce rapid calls
+    _systemUIUpdateTimer?.cancel();
 
-    SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+    // Schedule the actual update after a short delay
+    _systemUIUpdateTimer = Timer(const Duration(milliseconds: 100), () {
+      final tokens = currentTokens;
+      final overlayStyle = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: tokens.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+        statusBarBrightness: tokens.brightness,
+        systemNavigationBarColor: tokens.bgBase,
+        systemNavigationBarIconBrightness: tokens.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+      );
+
+      SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+    });
   }
 
   // === Theme Building Methods (using semantic tokens) ===
@@ -486,4 +480,10 @@ class ThemeProvider extends ChangeNotifier {
   /// Legacy method for backward compatibility
   List<String> get availableFlavors =>
       availableVariants.map((v) => v.id).toList();
+
+  @override
+  void dispose() {
+    _systemUIUpdateTimer?.cancel();
+    super.dispose();
+  }
 }
