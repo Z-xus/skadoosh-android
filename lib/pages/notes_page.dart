@@ -5,6 +5,8 @@ import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/key_based_sync_service.dart';
 import 'package:skadoosh_app/pages/edit_note_page.dart';
+import 'package:skadoosh_app/pages/rituals_page.dart';
+import 'package:skadoosh_app/pages/settings.dart';
 import 'package:skadoosh_app/theme/design_tokens.dart';
 
 class NotesPage extends StatefulWidget {
@@ -21,7 +23,7 @@ class _NotesPageState extends State<NotesPage>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // 1. Add state for navigation
+  // 1. Current page is always Notes (0) since navigation goes to other pages
   int _currentIndex = 0;
 
   @override
@@ -220,55 +222,15 @@ class _NotesPageState extends State<NotesPage>
     );
   }
 
-  // 3. Simple placeholders for the other pages
-  Widget _buildPlaceholderPage(String title, IconData icon) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 64,
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          const SizedBox(height: 16),
-          Text(title, style: Theme.of(context).textTheme.headlineSmall),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    // 4. Switch visible content
-    Widget content;
-    String title;
-
-    switch (_currentIndex) {
-      case 0:
-        content = _buildNotesView(theme, colorScheme);
-        title = 'Notes';
-        break;
-      case 1:
-        content = _buildPlaceholderPage('Todos', Icons.check_circle_outline);
-        title = 'Todos';
-        break;
-      case 2:
-        content = _buildPlaceholderPage('Archive', Icons.inventory_2_outlined);
-        title = 'Archive';
-        break;
-      case 3:
-        content = _buildPlaceholderPage('Settings', Icons.settings_outlined);
-        title = 'Settings';
-        break;
-      default:
-        content = _buildNotesView(theme, colorScheme);
-        title = 'Notes';
-    }
+    // 4. Show Notes view since this page is specifically for Notes
+    Widget content = _buildNotesView(theme, colorScheme);
+    String title = 'Notes';
 
     return Scaffold(
       // 5. CRITICAL: extendBody allows content to flow behind the navigation bar
@@ -342,27 +304,41 @@ class _NotesPageState extends State<NotesPage>
           height: 64,
           margin: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
           decoration: BoxDecoration(
-            color: Colors.black,
+            color: colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                offset: const Offset(0, 10),
-                blurRadius: 20,
+                color: colorScheme.shadow.withValues(alpha: 0.2),
+                offset: const Offset(0, 4),
+                blurRadius: 12,
               ),
             ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(0, Icons.home_rounded, Icons.home_outlined),
-              _buildNavItem(1, Icons.task_alt_rounded, Icons.task_alt_outlined),
+              _buildNavItem(
+                0,
+                Icons.note_rounded,
+                Icons.note_outlined,
+                "Notes",
+              ),
+              _buildNavItem(
+                1,
+                Icons.auto_awesome_rounded,
+                Icons.auto_awesome_outlined,
+                "Rituals",
+              ),
               _buildNavItem(
                 2,
-                Icons.inventory_2_rounded,
-                Icons.inventory_2_outlined,
+                Icons.settings_rounded,
+                Icons.settings_outlined,
+                "Settings",
               ),
-              _buildNavItem(3, Icons.settings_rounded, Icons.settings_outlined),
             ],
           ),
         ),
@@ -370,11 +346,76 @@ class _NotesPageState extends State<NotesPage>
     );
   }
 
-  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon) {
+  Widget _buildNavItem(
+    int index,
+    IconData activeIcon,
+    IconData inactiveIcon,
+    String label,
+  ) {
     final isSelected = _currentIndex == index;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        if (index == _currentIndex) return; // Don't navigate to same page
+
+        switch (index) {
+          case 0:
+            // Stay on Notes page - do nothing
+            setState(() => _currentIndex = 0);
+            break;
+          case 1:
+            // Navigate to Rituals page
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, _) => const RitualsPage(),
+                transitionDuration: DesignTokens.animationMedium,
+                transitionsBuilder: (context, animation, _, child) {
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: DesignTokens.animationCurveEmphasized,
+                          ),
+                        ),
+                    child: child,
+                  );
+                },
+              ),
+            );
+            break;
+          case 2:
+            // Navigate to Settings page
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, _) => const SettingsPage(),
+                transitionDuration: DesignTokens.animationMedium,
+                transitionsBuilder: (context, animation, _, child) {
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: DesignTokens.animationCurveEmphasized,
+                          ),
+                        ),
+                    child: child,
+                  );
+                },
+              ),
+            );
+            break;
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -386,7 +427,9 @@ class _NotesPageState extends State<NotesPage>
           child: Icon(
             isSelected ? activeIcon : inactiveIcon,
             key: ValueKey<bool>(isSelected),
-            color: isSelected ? Colors.white : Colors.grey.shade600,
+            color: isSelected
+                ? colorScheme.primary
+                : colorScheme.onSurfaceVariant,
             size: 26,
           ),
         ),
