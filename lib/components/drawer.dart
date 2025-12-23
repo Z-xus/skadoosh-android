@@ -4,6 +4,7 @@ import 'package:skadoosh_app/pages/settings.dart';
 import 'package:skadoosh_app/pages/device_management_page.dart';
 import 'package:skadoosh_app/pages/archived_notes_page.dart';
 import 'package:skadoosh_app/pages/trash_page.dart';
+import 'package:skadoosh_app/pages/rituals_page.dart';
 import 'package:skadoosh_app/theme/design_tokens.dart';
 
 class MyDrawer extends StatelessWidget {
@@ -89,6 +90,15 @@ class MyDrawer extends StatelessWidget {
                   leading: const Icon(Icons.note_rounded),
                   onTap: () => Navigator.pop(context),
                   isSelected: true,
+                ),
+
+                SizedBox(height: DesignTokens.spaceXS.top),
+
+                // Focus tile
+                DrawerTile(
+                  title: "Focus",
+                  leading: const Icon(Icons.center_focus_strong_rounded),
+                  onTap: () => _navigateToPage(context, const RitualsPage()),
                 ),
 
                 SizedBox(height: DesignTokens.spaceXS.top),

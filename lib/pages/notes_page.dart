@@ -84,7 +84,9 @@ class _NotesPageState extends State<NotesPage>
   }
 
   void _readNotes() {
-    context.read<NoteDatabase>().fetchNotes();
+    final noteDatabase = context.read<NoteDatabase>();
+    noteDatabase.fetchNotes();
+    noteDatabase.fetchHabits(); // Also initialize habits data
   }
 
   Future<void> _performSync() async {
