@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
+import 'package:skadoosh_app/theme/catppuccin_colors.dart';
+import 'package:skadoosh_app/theme/theme_provider.dart';
 
 class EditNotePage extends StatefulWidget {
   final Note? note;
@@ -16,179 +18,488 @@ class EditNotePage extends StatefulWidget {
 
 class _EditNotePageState extends State<EditNotePage> {
   late EditorState _editorState;
-  late TextEditingController _titleController;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize title controller
-    _titleController = TextEditingController(text: widget.note?.title ?? '');
-
-    // Initialize the editor state
+    // Initialize with a blank editor state to prevent LateInitializationError
     _editorState = EditorState.blank();
+    _addSelectionListener();
     _loadNoteContent();
   }
 
   Future<void> _loadNoteContent() async {
-    if (widget.note == null) return;
+    try {
+      // 1. New Note
+      if (widget.note == null) {
+        final newState = EditorState(
+          document: Document(
+            root: pageNode(
+              children: [
+                headingNode(level: 1, text: 'Untitled'),
+                paragraphNode(),
+              ],
+            ),
+          ),
+        );
+        if (mounted) {
+          setState(() {
+            _removeSelectionListener(); // Remove from old state
+            _editorState.dispose(); // Dispose old state
+            _editorState = newState;
+            _addSelectionListener(); // Add to new state
+          });
+        }
+        return;
+      }
 
-    String content = '';
-    if (widget.note!.fileName != null) {
-      content = await StorageService().readNote(widget.note!.fileName!);
-    } else if (widget.note!.body.isNotEmpty) {
-      // Fallback for legacy notes not yet migrated to files
-      content = widget.note!.body;
-    }
+      // 2. Existing Note
+      String content = '';
+      if (widget.note!.fileName != null) {
+        content = await StorageService().readNote(widget.note!.fileName!);
+      } else if (widget.note!.body.isNotEmpty) {
+        content = widget.note!.body;
+      }
 
-    if (content.isNotEmpty) {
-      setState(() {
-        _editorState = EditorState(document: markdownToDocument(content));
-      });
+      if (content.isNotEmpty) {
+        final newState = EditorState(document: markdownToDocument(content));
+        if (mounted) {
+          setState(() {
+            _removeSelectionListener(); // Remove from old state
+            _editorState.dispose(); // Dispose old state
+            _editorState = newState;
+            _addSelectionListener(); // Add to new state
+          });
+        }
+      } else {
+        final newState = EditorState.blank();
+        if (mounted) {
+          setState(() {
+            _removeSelectionListener(); // Remove from old state
+            _editorState.dispose(); // Dispose old state
+            _editorState = newState;
+            _addSelectionListener(); // Add to new state
+          });
+        }
+      }
+    } catch (e) {
+      // If loading fails, keep the blank state
+      print('Error loading note content: $e');
     }
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
+    _removeSelectionListener();
     _editorState.dispose();
     super.dispose();
   }
 
+  // --- Selection Change Listener for Real-time Button Updates ---
+  void _addSelectionListener() {
+    _editorState.selectionNotifier.addListener(_onSelectionChanged);
+  }
+
+  void _removeSelectionListener() {
+    _editorState.selectionNotifier.removeListener(_onSelectionChanged);
+  }
+
+  void _onSelectionChanged() {
+    // Update UI to reflect current formatting state at cursor position
+    if (mounted) {
+      setState(() {
+        // Debug: Log selection changes
+        print('🎯 Selection changed - updating button states');
+      });
+    }
+  }
+
   void _saveNote() async {
-    final title = _titleController.text.trim();
-    final body = documentToMarkdown(_editorState.document);
     final noteDatabase = context.read<NoteDatabase>();
     final storageService = StorageService();
 
-    if (title.isEmpty && body.trim().isEmpty) {
-      // Don't save empty notes
+    final nodes = _editorState.document.root.children;
+    String extractedTitle = 'Untitled';
+    if (nodes.isNotEmpty) {
+      final firstNodeText = nodes.first.delta?.toPlainText().trim() ?? '';
+      extractedTitle = firstNodeText.split('\n').first;
+    }
+    if (extractedTitle.isEmpty) extractedTitle = 'Untitled';
+
+    final body = documentToMarkdown(_editorState.document);
+
+    if (extractedTitle == 'Untitled' && body.trim().isEmpty) {
       Navigator.pop(context);
       return;
     }
 
-    final sanitizedTitle = title.isEmpty ? 'Untitled' : title;
-
-    // Determine filename
     String fileName =
         widget.note?.fileName ??
-        storageService.sanitizeFilename(sanitizedTitle);
+        storageService.sanitizeFilename(extractedTitle);
 
-    // Write to local file
     await storageService.writeNote(fileName, body);
 
     if (widget.note == null) {
-      // Create new note in Isar with metadata
       await noteDatabase.addNote(
-        sanitizedTitle,
-        body: '', // Body is now in file
+        extractedTitle,
+        body: '',
         fileName: fileName,
-        relativePath: fileName, // CRITICAL FIX: Set relativePath!
+        relativePath: fileName,
       );
     } else {
-      // Update existing note in Isar with metadata
       await noteDatabase.updateNote(
         widget.note!.id,
-        sanitizedTitle,
-        body: '', // Body is now in file
+        extractedTitle,
+        body: '',
         fileName: fileName,
-        relativePath: fileName, // CRITICAL FIX: Set relativePath!
+        relativePath: fileName,
       );
     }
 
-    if (mounted) {
-      Navigator.pop(context);
-    }
+    if (mounted) Navigator.pop(context);
   }
 
-  final List<CharacterShortcutEvent> customCharacterShortcuts = [
-    ...standardCharacterShortcutEvents,
-    ...markdownSyntaxShortcutEvents,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    // Use system default font instead of Google Fonts
-    final baseStyle = TextStyle(
-      color: Theme.of(context).colorScheme.inversePrimary,
-      fontSize: 16,
-    );
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          widget.note == null ? 'New Note' : 'Edit Note',
-          style: TextStyle(color: Theme.of(context).colorScheme.inversePrimary),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: _saveNote,
-            icon: const Icon(Icons.save),
-            tooltip: 'Save Note',
+  // --- Modern Floating Toolbar Configuration ---
+  Widget _buildModernFloatingToolbar(CatppuccinPalette palette) {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+      decoration: BoxDecoration(
+        color: palette.surface1,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: palette.crust.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      body: Column(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildToolbarButton(
+              icon: Icons.format_bold_rounded,
+              isSelected: _isFormatActive('bold'),
+              onTap: () => _toggleFormat('bold'),
+              palette: palette,
+            ),
+            _buildToolbarButton(
+              icon: Icons.format_italic_rounded,
+              isSelected: _isFormatActive('italic'),
+              onTap: () => _toggleFormat('italic'),
+              palette: palette,
+            ),
+            _buildToolbarButton(
+              icon: Icons.format_underlined_rounded,
+              isSelected: _isFormatActive('underline'),
+              onTap: () => _toggleFormat('underline'),
+              palette: palette,
+            ),
+            _buildToolbarButton(
+              icon: Icons.title_rounded,
+              isSelected: _isFormatActive('heading'),
+              onTap: () => _toggleHeading(),
+              palette: palette,
+            ),
+            _buildToolbarButton(
+              icon: Icons.format_list_bulleted_rounded,
+              isSelected: _isFormatActive('bulleted_list'),
+              onTap: () => _toggleBulletList(),
+              palette: palette,
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildToolbarButton(
+                  icon: Icons.undo_rounded,
+                  isSelected: false,
+                  onTap: () => _editorState.undoManager.undo(),
+                  palette: palette,
+                ),
+                const SizedBox(width: 4),
+                _buildToolbarButton(
+                  icon: Icons.redo_rounded,
+                  isSelected: false,
+                  onTap: () => _editorState.undoManager.redo(),
+                  palette: palette,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolbarButton({
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required CatppuccinPalette palette,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? palette.mauve.withValues(alpha: 0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 24,
+          color: isSelected ? palette.mauve : palette.subtext0,
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for formatting - FIXED to use proper AppFlowy API
+  bool _isFormatActive(String format) {
+    try {
+      final selection = _editorState.selection;
+      if (selection == null) return false;
+
+      print(
+        'Checking format: $format for selection: ${selection.start.path}',
+      ); // Debug logging
+
+      switch (format) {
+        case 'bold':
+        case 'italic':
+        case 'underline':
+          // Use the correct AppFlowy v6.2.0 API instead of manual delta parsing
+          final value = _editorState.getDeltaAttributeValueInSelection<bool>(
+            format,
+          );
+          print('Format $format value: $value'); // Debug logging
+          return value == true;
+        case 'heading':
+          final node = _editorState.getNodeAtPath(selection.start.path);
+          final isHeading = node?.type == 'heading';
+          print(
+            'Is heading: $isHeading, node type: ${node?.type}',
+          ); // Debug logging
+          return isHeading;
+        case 'bulleted_list':
+          final node = _editorState.getNodeAtPath(selection.start.path);
+          final isBulletList = node?.type == 'bulleted_list';
+          print(
+            'Is bullet list: $isBulletList, node type: ${node?.type}',
+          ); // Debug logging
+          return isBulletList;
+        default:
+          return false;
+      }
+    } catch (e) {
+      print('Error checking format $format: $e');
+      return false;
+    }
+  }
+
+  void _toggleFormat(String format) {
+    try {
+      print('Toggling format: $format'); // Debug logging
+      _editorState.toggleAttribute(format);
+      // Force UI update to refresh button states
+      setState(() {});
+      print('Format toggled successfully: $format'); // Debug logging
+    } catch (e) {
+      print('Error toggling format $format: $e');
+    }
+  }
+
+  void _toggleHeading() {
+    try {
+      print('Toggling heading'); // Debug logging
+      final selection = _editorState.selection;
+      if (selection == null) return;
+
+      final node = _editorState.getNodeAtPath(selection.start.path);
+      if (node == null) return;
+
+      if (node.type == 'heading') {
+        print('Converting heading to paragraph'); // Debug logging
+        // Convert heading to paragraph
+        _editorState.formatNode(
+          selection,
+          (node) => node.copyWith(
+            type: 'paragraph',
+            attributes: Map<String, dynamic>.from(node.attributes)
+              ..remove('level'),
+          ),
+        );
+      } else {
+        print('Converting paragraph to heading'); // Debug logging
+        // Convert to heading
+        _editorState.formatNode(
+          selection,
+          (node) => node.copyWith(
+            type: 'heading',
+            attributes: Map<String, dynamic>.from(node.attributes)
+              ..['level'] = 1,
+          ),
+        );
+      }
+      // Force UI update to refresh button states
+      setState(() {});
+      print('Heading toggle completed'); // Debug logging
+    } catch (e) {
+      print('Error toggling heading: $e');
+    }
+  }
+
+  void _toggleBulletList() {
+    try {
+      print('Toggling bullet list'); // Debug logging
+      final selection = _editorState.selection;
+      if (selection == null) return;
+
+      final node = _editorState.getNodeAtPath(selection.start.path);
+      if (node == null) return;
+
+      if (node.type == 'bulleted_list') {
+        print('Converting bullet list to paragraph'); // Debug logging
+        // Convert to paragraph
+        _editorState.formatNode(
+          selection,
+          (node) => node.copyWith(type: 'paragraph'),
+        );
+      } else {
+        print('Converting paragraph to bullet list'); // Debug logging
+        // Convert to bulleted list
+        _editorState.formatNode(
+          selection,
+          (node) => node.copyWith(type: 'bulleted_list'),
+        );
+      }
+      // Force UI update to refresh button states
+      setState(() {});
+      print('Bullet list toggle completed'); // Debug logging
+    } catch (e) {
+      print('Error toggling bullet list: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final palette = CatppuccinColors.getPalette(themeProvider.currentFlavor);
+    final textColor = palette.text;
+    final bgColor = palette.base;
+
+    // Get keyboard height for proper positioning
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    if (!mounted) return const Scaffold();
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      resizeToAvoidBottomInset: false,
+      body: Stack(
         children: [
-          // Title field
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
-            child: TextField(
-              controller: _titleController,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.inversePrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Note title...',
-                hintStyle: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.inversePrimary.withValues(alpha: 0.5),
+          // Main content
+          SafeArea(
+            bottom:
+                false, // Don't add bottom safe area - we'll handle it manually
+            child: Column(
+              children: [
+                // --- Header ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: palette.overlay0.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Icon(Icons.close, size: 20, color: textColor),
+                        ),
+                      ),
+                      Text(
+                        widget.note == null ? 'New Note' : 'Edit Note',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _saveNote,
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: palette.overlay0.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Icon(Icons.check, size: 20, color: textColor),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                border: InputBorder.none,
-              ),
-              maxLines: null,
+
+                // --- Editor Area ---
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(
+                      bottom: 80,
+                    ), // Space for floating toolbar
+                    child: AppFlowyEditor(
+                      editorState: _editorState,
+                      editorStyle: EditorStyle.mobile(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16, // Reduced padding
+                          vertical: 8,
+                        ),
+                        cursorColor: palette.mauve,
+                        selectionColor: palette.mauve.withValues(alpha: 0.2),
+                        dragHandleColor: palette.mauve,
+                        textStyleConfiguration: TextStyleConfiguration(
+                          text: TextStyle(
+                            fontSize: 17,
+                            color: textColor,
+                            height: 1.5,
+                          ),
+                          // Add explicit text formatting styles for visual feedback
+                          bold: const TextStyle(fontWeight: FontWeight.bold),
+                          italic: const TextStyle(fontStyle: FontStyle.italic),
+                          underline: const TextStyle(
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Divider
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: Divider(
-              color: Theme.of(
-                context,
-              ).colorScheme.inversePrimary.withValues(alpha: 0.3),
-            ),
-          ),
-
-          // Body editor
-          Expanded(
-            child: AppFlowyEditor(
-              editorState: _editorState,
-              characterShortcutEvents: customCharacterShortcuts,
-              editorStyle: EditorStyle.mobile(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 25,
-                  vertical: 0,
-                ),
-                cursorColor: Theme.of(context).colorScheme.inversePrimary,
-                selectionColor: Theme.of(context).colorScheme.inversePrimary,
-                textStyleConfiguration: TextStyleConfiguration(
-                  text: baseStyle,
-                  bold: baseStyle.copyWith(fontWeight: FontWeight.bold),
-                  italic: baseStyle.copyWith(fontStyle: FontStyle.italic),
-                ),
-                dragHandleColor: Theme.of(context).colorScheme.inversePrimary,
-              ),
-            ),
+          // --- Modern Floating Toolbar ---
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16,
+            child: _buildModernFloatingToolbar(palette),
           ),
         ],
       ),

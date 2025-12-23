@@ -283,7 +283,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                     ).colorScheme.inversePrimary,
                     disabledBackgroundColor: Theme.of(
                       context,
-                    ).colorScheme.primary.withOpacity(0.4),
+                    ).colorScheme.primary.withValues(alpha: 0.4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

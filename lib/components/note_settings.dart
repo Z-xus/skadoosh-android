@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skadoosh_app/theme/design_tokens.dart';
 
 class NoteSettings extends StatelessWidget {
   final void Function()? onEditTap;
@@ -12,49 +13,92 @@ class NoteSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // edit
-        GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            onEditTap!();
-          },
-          child: Container(
-            height: 50,
-            color: Theme.of(context).colorScheme.surface,
-            child: Center(
-              child: Text(
-                "Edit",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.inversePrimary,
-                  fontWeight: FontWeight.bold,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    return Container(
+      padding: DesignTokens.spaceVerticalXS,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Edit option
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  onEditTap?.call();
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radiusS),
+                child: Container(
+                  padding: DesignTokens.spaceM.copyWith(
+                    top: DesignTokens.spaceS.top,
+                    bottom: DesignTokens.spaceS.bottom,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.edit_rounded,
+                        size: DesignTokens.iconSizeM,
+                        color: colorScheme.onSurface,
+                      ),
+                      SizedBox(width: DesignTokens.spaceS.left),
+                      Text(
+                        'Edit',
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        // delete
-        GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            onDeleteTap!();
-          },
-          child: Container(
-            height: 50,
-            color: Theme.of(context).colorScheme.surface,
-            child: Center(
-              child: Text(
-                "Delete",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.inversePrimary,
-                  fontWeight: FontWeight.bold,
+
+          // Delete option
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  onDeleteTap?.call();
+                },
+                borderRadius: BorderRadius.circular(DesignTokens.radiusS),
+                child: Container(
+                  padding: DesignTokens.spaceM.copyWith(
+                    top: DesignTokens.spaceS.top,
+                    bottom: DesignTokens.spaceS.bottom,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_rounded,
+                        size: DesignTokens.iconSizeM,
+                        color: colorScheme.error,
+                      ),
+                      SizedBox(width: DesignTokens.spaceS.left),
+                      Text(
+                        'Delete',
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

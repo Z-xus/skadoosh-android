@@ -1,21 +1,21 @@
-[ ] Diff based syncing.
+[x] Diff based syncing.
 [ ] Internal file storing - import/export
-[ ] Make convience, try key exchange, and easy to connect multiple devices.
+[x] Make convience, try key exchange, and easy to connect multiple devices.
 [ ] Fully trash, move to across all to trash.
 [ ] hide notes
-[ ] folder
+[ ] folder (notebooks)
 [ ] click to edit
 [ ] tags
 [ ] search
-[ ] markdown support
+[x] markdown support
 [ ] images
 [ ] reminders
 [ ] sharing notes
 [ ] rich text editing
 [ ] version history
-[ ] offline support
-[ ] end to end encryption
-[ ] mobile app
+[x] offline support
+[x] end to end encryption
+[x] mobile app
 [ ] web app
 [ ] desktop app
 [ ] keyboard shortcuts
