@@ -5,6 +5,10 @@ import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class EditNotePage extends StatefulWidget {
   final Note? note;
@@ -18,10 +22,15 @@ class EditNotePage extends StatefulWidget {
 
 class _EditNotePageState extends State<EditNotePage> {
   late EditorState _editorState;
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isPreviewMode = false;
+  bool _hasBeenSaved = false;
 
   @override
   void initState() {
     super.initState();
+    // Initialize saved state
+    _hasBeenSaved = widget.note != null;
     // Initialize with a blank editor state to prevent LateInitializationError
     _editorState = EditorState.blank();
     _addSelectionListener();
@@ -140,37 +149,52 @@ class _EditNotePageState extends State<EditNotePage> {
 
     await storageService.writeNote(fullPath, body);
 
-    if (widget.note == null) {
-      // Creating a new note
+    if (!_hasBeenSaved && widget.note == null) {
+      // Creating a new note - only do this once
       if (widget.folderPath != null && widget.folderPath!.isNotEmpty) {
         // Creating note in a specific folder
         await noteDatabase.addNoteToFolder(
           extractedTitle,
           widget.folderPath!,
-          body: body, // Use actual body content, not empty string
+          body: body,
           fileName: fileName,
         );
       } else {
         // Creating note in root folder
         await noteDatabase.addNote(
           extractedTitle,
-          body: body, // Use actual body content, not empty string
+          body: body,
           fileName: fileName,
           relativePath: fileName,
         );
       }
-    } else {
+      // Mark as saved to prevent duplicates
+      _hasBeenSaved = true;
+    } else if (widget.note != null) {
       // Updating existing note
       await noteDatabase.updateNote(
         widget.note!.id,
         extractedTitle,
-        body: body, // Use actual body content, not empty string
+        body: body,
         fileName: fileName,
         relativePath: fullPath,
       );
     }
 
-    if (mounted) Navigator.pop(context);
+    // Switch to preview mode after save
+    setState(() {
+      _isPreviewMode = true;
+    });
+
+    // Show save feedback
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note saved successfully'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   // --- Modern Floating Toolbar Configuration ---
@@ -220,6 +244,11 @@ class _EditNotePageState extends State<EditNotePage> {
               icon: Icons.format_list_bulleted_rounded,
               isSelected: _isFormatActive('bulleted_list'),
               onTap: () => _toggleBulletList(),
+            ),
+            _buildToolbarButton(
+              icon: Icons.image,
+              isSelected: false,
+              onTap: _showImagePicker,
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -399,6 +428,112 @@ class _EditNotePageState extends State<EditNotePage> {
     }
   }
 
+  void _toggleEditMode() {
+    setState(() {
+      _isPreviewMode = !_isPreviewMode;
+    });
+  }
+
+  void _showImagePicker() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        await _insertImageAsWidget(pickedFile);
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error selecting image: $e')));
+    }
+  }
+
+  Future<void> _insertImageAsWidget(XFile imageFile) async {
+    try {
+      final selection = _editorState.selection;
+      if (selection == null || !selection.isCollapsed) return;
+
+      // Create images directory if it doesn't exist
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      // Generate a unique filename
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final extension = path.extension(imageFile.path);
+      final fileName = 'image_$timestamp$extension';
+      final filePath = '${imagesDir.path}/$fileName';
+
+      // Copy the image to our images directory
+      final imageBytes = await imageFile.readAsBytes();
+      final file = File(filePath);
+      await file.writeAsBytes(imageBytes);
+
+      // Get the node and path for insertion
+      final node = _editorState.getNodeAtPath(selection.end.path);
+      if (node == null) return;
+
+      final transaction = _editorState.transaction;
+
+      // Create image node with proper URL
+      final imageNode = Node(
+        type: 'image',
+        attributes: {
+          'url': file.path,
+          'align': 'center',
+          'width': 300.0,
+          'height': 200.0,
+        },
+      );
+
+      // If current node is empty paragraph, replace it
+      if (node.type == 'paragraph' && (node.delta?.isEmpty ?? false)) {
+        transaction
+          ..insertNode(node.path, imageNode)
+          ..deleteNode(node);
+      } else {
+        // Insert after current node
+        transaction.insertNode(node.path.next, imageNode);
+      }
+
+      // Set cursor after the image
+      transaction.afterSelection = Selection.collapsed(
+        Position(path: node.path.next, offset: 0),
+      );
+
+      await _editorState.apply(transaction);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image added to note'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error inserting image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inserting image: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -447,7 +582,9 @@ class _EditNotePageState extends State<EditNotePage> {
                         ),
                       ),
                       Text(
-                        widget.note == null ? 'New Note' : 'Edit Note',
+                        _isPreviewMode
+                            ? 'Preview Mode'
+                            : (widget.note == null ? 'New Note' : 'Edit Note'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -455,7 +592,7 @@ class _EditNotePageState extends State<EditNotePage> {
                         ),
                       ),
                       IconButton(
-                        onPressed: _saveNote,
+                        onPressed: _isPreviewMode ? _toggleEditMode : _saveNote,
                         icon: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -466,7 +603,11 @@ class _EditNotePageState extends State<EditNotePage> {
                               ),
                             ),
                           ),
-                          child: Icon(Icons.check, size: 20, color: textColor),
+                          child: Icon(
+                            _isPreviewMode ? Icons.edit : Icons.save,
+                            size: 20,
+                            color: textColor,
+                          ),
                         ),
                       ),
                     ],
@@ -476,21 +617,29 @@ class _EditNotePageState extends State<EditNotePage> {
                 // --- Editor Area ---
                 Expanded(
                   child: Container(
-                    margin: const EdgeInsets.only(
-                      bottom: 80,
-                    ), // Space for floating toolbar
+                    margin: EdgeInsets.only(
+                      bottom: _isPreviewMode
+                          ? 16
+                          : 80, // No toolbar in preview mode
+                    ),
                     child: AppFlowyEditor(
                       editorState: _editorState,
+                      editable:
+                          !_isPreviewMode, // Disable editing in preview mode
                       editorStyle: EditorStyle.mobile(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16, // Reduced padding
                           vertical: 8,
                         ),
-                        cursorColor: tokens.accentPrimary,
-                        selectionColor: tokens.accentPrimary.withValues(
-                          alpha: 0.2,
-                        ),
-                        dragHandleColor: tokens.accentPrimary,
+                        cursorColor: _isPreviewMode
+                            ? Colors.transparent
+                            : tokens.accentPrimary,
+                        selectionColor: _isPreviewMode
+                            ? Colors.transparent
+                            : tokens.accentPrimary.withValues(alpha: 0.2),
+                        dragHandleColor: _isPreviewMode
+                            ? Colors.transparent
+                            : tokens.accentPrimary,
                         textStyleConfiguration: TextStyleConfiguration(
                           text: TextStyle(
                             fontSize: 17,
@@ -512,13 +661,14 @@ class _EditNotePageState extends State<EditNotePage> {
             ),
           ),
 
-          // --- Modern Floating Toolbar ---
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16,
-            child: _buildModernFloatingToolbar(),
-          ),
+          // --- Modern Floating Toolbar (only in edit mode) ---
+          if (!_isPreviewMode)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16,
+              child: _buildModernFloatingToolbar(),
+            ),
         ],
       ),
     );
