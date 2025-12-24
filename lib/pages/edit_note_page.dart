@@ -8,8 +8,9 @@ import 'package:skadoosh_app/theme/theme_provider.dart';
 
 class EditNotePage extends StatefulWidget {
   final Note? note;
+  final String? folderPath; // NEW: For creating notes in specific folders
 
-  const EditNotePage({super.key, this.note});
+  const EditNotePage({super.key, this.note, this.folderPath});
 
   @override
   State<EditNotePage> createState() => _EditNotePageState();
@@ -49,7 +50,9 @@ class _EditNotePageState extends State<EditNotePage> {
 
       // 2. Existing Note
       String content = '';
-      if (widget.note!.fileName != null) {
+      if (widget.note!.relativePath != null) {
+        content = await StorageService().readNote(widget.note!.relativePath!);
+      } else if (widget.note!.fileName != null) {
         content = await StorageService().readNote(widget.note!.fileName!);
       } else if (widget.note!.body.isNotEmpty) {
         content = widget.note!.body;
@@ -131,22 +134,39 @@ class _EditNotePageState extends State<EditNotePage> {
         widget.note?.fileName ??
         storageService.sanitizeFilename(extractedTitle);
 
-    await storageService.writeNote(fileName, body);
+    // Handle folder path for file storage
+    final folderPath = widget.note?.folderPath ?? widget.folderPath ?? '';
+    final fullPath = folderPath.isEmpty ? fileName : '$folderPath/$fileName';
+
+    await storageService.writeNote(fullPath, body);
 
     if (widget.note == null) {
-      await noteDatabase.addNote(
-        extractedTitle,
-        body: '',
-        fileName: fileName,
-        relativePath: fileName,
-      );
+      // Creating a new note
+      if (widget.folderPath != null && widget.folderPath!.isNotEmpty) {
+        // Creating note in a specific folder
+        await noteDatabase.addNoteToFolder(
+          extractedTitle,
+          widget.folderPath!,
+          body: body, // Use actual body content, not empty string
+          fileName: fileName,
+        );
+      } else {
+        // Creating note in root folder
+        await noteDatabase.addNote(
+          extractedTitle,
+          body: body, // Use actual body content, not empty string
+          fileName: fileName,
+          relativePath: fileName,
+        );
+      }
     } else {
+      // Updating existing note
       await noteDatabase.updateNote(
         widget.note!.id,
         extractedTitle,
-        body: '',
+        body: body, // Use actual body content, not empty string
         fileName: fileName,
-        relativePath: fileName,
+        relativePath: fullPath,
       );
     }
 

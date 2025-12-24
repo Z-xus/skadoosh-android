@@ -20,7 +20,11 @@ class Note {
 
   // NEW: Shadow caching and change detection fields
   @Index() // For fast lookups by FileWatcher
-  String? relativePath; // e.g., "MyNote.md" - filename only
+  String? relativePath; // e.g., "MyNote.md" or "folder/subfolder/MyNote.md"
+
+  // NEW: Folder organization fields
+  @Index() // For fast folder filtering and organization
+  String? folderPath; // e.g., "", "Work", "Work/Projects" (empty string = root)
 
   List<int>? shadowContentZLib; // GZip compressed content from last sync
   String? lastSyncedHash; // SHA-256 hash of uncompressed shadow content
@@ -111,4 +115,27 @@ class Note {
       return null;
     }
   }
+
+  // NEW: Folder helper methods (simplified for single-level)
+  String get displayFileName {
+    if (fileName != null) {
+      return fileName!.replaceAll('.md', '');
+    }
+    if (relativePath != null) {
+      final parts = relativePath!.split('/');
+      return parts.last.replaceAll('.md', '');
+    }
+    return title;
+  }
+
+  bool get isInRoot => folderPath == null || folderPath!.isEmpty;
+
+  String get fullPath {
+    if (isInRoot) return fileName ?? relativePath ?? '$title.md';
+    return '${folderPath!}/${fileName ?? relativePath ?? '$title.md'}';
+  }
+
+  String get folderName => folderPath ?? '';
+
+  String get displayFolderName => isInRoot ? 'All' : folderPath!;
 }

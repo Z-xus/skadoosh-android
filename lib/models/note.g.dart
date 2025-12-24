@@ -42,78 +42,108 @@ const NoteSchema = CollectionSchema(
       name: r'deviceId',
       type: IsarType.string,
     ),
-    r'fileName': PropertySchema(
+    r'displayFileName': PropertySchema(
       id: 5,
+      name: r'displayFileName',
+      type: IsarType.string,
+    ),
+    r'displayFolderName': PropertySchema(
+      id: 6,
+      name: r'displayFolderName',
+      type: IsarType.string,
+    ),
+    r'fileName': PropertySchema(
+      id: 7,
       name: r'fileName',
       type: IsarType.string,
     ),
+    r'folderName': PropertySchema(
+      id: 8,
+      name: r'folderName',
+      type: IsarType.string,
+    ),
+    r'folderPath': PropertySchema(
+      id: 9,
+      name: r'folderPath',
+      type: IsarType.string,
+    ),
+    r'fullPath': PropertySchema(
+      id: 10,
+      name: r'fullPath',
+      type: IsarType.string,
+    ),
     r'isActive': PropertySchema(
-      id: 6,
+      id: 11,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'isArchived': PropertySchema(
-      id: 7,
+      id: 12,
       name: r'isArchived',
       type: IsarType.bool,
     ),
     r'isDeleted': PropertySchema(
-      id: 8,
+      id: 13,
       name: r'isDeleted',
       type: IsarType.bool,
     ),
     r'isDirty': PropertySchema(
-      id: 9,
+      id: 14,
       name: r'isDirty',
       type: IsarType.bool,
     ),
+    r'isInRoot': PropertySchema(
+      id: 15,
+      name: r'isInRoot',
+      type: IsarType.bool,
+    ),
     r'isInTrash': PropertySchema(
-      id: 10,
+      id: 16,
       name: r'isInTrash',
       type: IsarType.bool,
     ),
     r'lastSyncedAt': PropertySchema(
-      id: 11,
+      id: 17,
       name: r'lastSyncedAt',
       type: IsarType.dateTime,
     ),
     r'lastSyncedHash': PropertySchema(
-      id: 12,
+      id: 18,
       name: r'lastSyncedHash',
       type: IsarType.string,
     ),
     r'needsSync': PropertySchema(
-      id: 13,
+      id: 19,
       name: r'needsSync',
       type: IsarType.bool,
     ),
     r'relativePath': PropertySchema(
-      id: 14,
+      id: 20,
       name: r'relativePath',
       type: IsarType.string,
     ),
     r'serverId': PropertySchema(
-      id: 15,
+      id: 21,
       name: r'serverId',
       type: IsarType.string,
     ),
     r'shadowContentZLib': PropertySchema(
-      id: 16,
+      id: 22,
       name: r'shadowContentZLib',
       type: IsarType.longList,
     ),
     r'shouldPermanentlyDelete': PropertySchema(
-      id: 17,
+      id: 23,
       name: r'shouldPermanentlyDelete',
       type: IsarType.bool,
     ),
     r'title': PropertySchema(
-      id: 18,
+      id: 24,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 19,
+      id: 25,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -136,6 +166,19 @@ const NoteSchema = CollectionSchema(
           caseSensitive: true,
         )
       ],
+    ),
+    r'folderPath': IndexSchema(
+      id: -8832620910772372211,
+      name: r'folderPath',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'folderPath',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -154,12 +197,22 @@ int _noteEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.body.length * 3;
   bytesCount += 3 + object.deviceId.length * 3;
+  bytesCount += 3 + object.displayFileName.length * 3;
+  bytesCount += 3 + object.displayFolderName.length * 3;
   {
     final value = object.fileName;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.folderName.length * 3;
+  {
+    final value = object.folderPath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.fullPath.length * 3;
   {
     final value = object.lastSyncedHash;
     if (value != null) {
@@ -199,21 +252,27 @@ void _noteSerialize(
   writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeDateTime(offsets[3], object.deletedAt);
   writer.writeString(offsets[4], object.deviceId);
-  writer.writeString(offsets[5], object.fileName);
-  writer.writeBool(offsets[6], object.isActive);
-  writer.writeBool(offsets[7], object.isArchived);
-  writer.writeBool(offsets[8], object.isDeleted);
-  writer.writeBool(offsets[9], object.isDirty);
-  writer.writeBool(offsets[10], object.isInTrash);
-  writer.writeDateTime(offsets[11], object.lastSyncedAt);
-  writer.writeString(offsets[12], object.lastSyncedHash);
-  writer.writeBool(offsets[13], object.needsSync);
-  writer.writeString(offsets[14], object.relativePath);
-  writer.writeString(offsets[15], object.serverId);
-  writer.writeLongList(offsets[16], object.shadowContentZLib);
-  writer.writeBool(offsets[17], object.shouldPermanentlyDelete);
-  writer.writeString(offsets[18], object.title);
-  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeString(offsets[5], object.displayFileName);
+  writer.writeString(offsets[6], object.displayFolderName);
+  writer.writeString(offsets[7], object.fileName);
+  writer.writeString(offsets[8], object.folderName);
+  writer.writeString(offsets[9], object.folderPath);
+  writer.writeString(offsets[10], object.fullPath);
+  writer.writeBool(offsets[11], object.isActive);
+  writer.writeBool(offsets[12], object.isArchived);
+  writer.writeBool(offsets[13], object.isDeleted);
+  writer.writeBool(offsets[14], object.isDirty);
+  writer.writeBool(offsets[15], object.isInRoot);
+  writer.writeBool(offsets[16], object.isInTrash);
+  writer.writeDateTime(offsets[17], object.lastSyncedAt);
+  writer.writeString(offsets[18], object.lastSyncedHash);
+  writer.writeBool(offsets[19], object.needsSync);
+  writer.writeString(offsets[20], object.relativePath);
+  writer.writeString(offsets[21], object.serverId);
+  writer.writeLongList(offsets[22], object.shadowContentZLib);
+  writer.writeBool(offsets[23], object.shouldPermanentlyDelete);
+  writer.writeString(offsets[24], object.title);
+  writer.writeDateTime(offsets[25], object.updatedAt);
 }
 
 Note _noteDeserialize(
@@ -228,19 +287,20 @@ Note _noteDeserialize(
   object.createdAt = reader.readDateTimeOrNull(offsets[2]);
   object.deletedAt = reader.readDateTimeOrNull(offsets[3]);
   object.deviceId = reader.readString(offsets[4]);
-  object.fileName = reader.readStringOrNull(offsets[5]);
+  object.fileName = reader.readStringOrNull(offsets[7]);
+  object.folderPath = reader.readStringOrNull(offsets[9]);
   object.id = id;
-  object.isArchived = reader.readBool(offsets[7]);
-  object.isDeleted = reader.readBool(offsets[8]);
-  object.isDirty = reader.readBool(offsets[9]);
-  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[11]);
-  object.lastSyncedHash = reader.readStringOrNull(offsets[12]);
-  object.needsSync = reader.readBool(offsets[13]);
-  object.relativePath = reader.readStringOrNull(offsets[14]);
-  object.serverId = reader.readStringOrNull(offsets[15]);
-  object.shadowContentZLib = reader.readLongList(offsets[16]);
-  object.title = reader.readString(offsets[18]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[19]);
+  object.isArchived = reader.readBool(offsets[12]);
+  object.isDeleted = reader.readBool(offsets[13]);
+  object.isDirty = reader.readBool(offsets[14]);
+  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[17]);
+  object.lastSyncedHash = reader.readStringOrNull(offsets[18]);
+  object.needsSync = reader.readBool(offsets[19]);
+  object.relativePath = reader.readStringOrNull(offsets[20]);
+  object.serverId = reader.readStringOrNull(offsets[21]);
+  object.shadowContentZLib = reader.readLongList(offsets[22]);
+  object.title = reader.readString(offsets[24]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[25]);
   return object;
 }
 
@@ -262,34 +322,46 @@ P _noteDeserializeProp<P>(
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readBool(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 7:
-      return (reader.readBool(offset)) as P;
-    case 8:
-      return (reader.readBool(offset)) as P;
-    case 9:
-      return (reader.readBool(offset)) as P;
-    case 10:
-      return (reader.readBool(offset)) as P;
-    case 11:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 12:
       return (reader.readStringOrNull(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readBool(offset)) as P;
+    case 12:
+      return (reader.readBool(offset)) as P;
     case 13:
       return (reader.readBool(offset)) as P;
     case 14:
-      return (reader.readStringOrNull(offset)) as P;
-    case 15:
-      return (reader.readStringOrNull(offset)) as P;
-    case 16:
-      return (reader.readLongList(offset)) as P;
-    case 17:
       return (reader.readBool(offset)) as P;
+    case 15:
+      return (reader.readBool(offset)) as P;
+    case 16:
+      return (reader.readBool(offset)) as P;
+    case 17:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 18:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 19:
+      return (reader.readBool(offset)) as P;
+    case 20:
+      return (reader.readStringOrNull(offset)) as P;
+    case 21:
+      return (reader.readStringOrNull(offset)) as P;
+    case 22:
+      return (reader.readLongList(offset)) as P;
+    case 23:
+      return (reader.readBool(offset)) as P;
+    case 24:
+      return (reader.readString(offset)) as P;
+    case 25:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -441,6 +513,71 @@ extension NoteQueryWhere on QueryBuilder<Note, Note, QWhereClause> {
               indexName: r'relativePath',
               lower: [],
               upper: [relativePath],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> folderPathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderPath',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> folderPathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderPath',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> folderPathEqualTo(
+      String? folderPath) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderPath',
+        value: [folderPath],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> folderPathNotEqualTo(
+      String? folderPath) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderPath',
+              lower: [],
+              upper: [folderPath],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderPath',
+              lower: [folderPath],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderPath',
+              lower: [folderPath],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderPath',
+              lower: [],
+              upper: [folderPath],
               includeUpper: false,
             ));
       }
@@ -913,6 +1050,267 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'displayFileName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'displayFileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'displayFileName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'displayFileName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFileNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'displayFileName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'displayFolderName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'displayFolderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'displayFolderName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> displayFolderNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'displayFolderName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      displayFolderNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'displayFolderName',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> fileNameIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1058,6 +1456,411 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'folderName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'folderName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'folderName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'folderName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'folderPath',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'folderPath',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'folderPath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'folderPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'folderPath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> folderPathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'folderPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'fullPath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathContains(String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'fullPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'fullPath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fullPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> fullPathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'fullPath',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1142,6 +1945,15 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'isDirty',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> isInRootEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isInRoot',
         value: value,
       ));
     });
@@ -2104,6 +2916,30 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> sortByDisplayFileName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFileName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByDisplayFileNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByDisplayFolderName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFolderName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByDisplayFolderNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFolderName', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByFileName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fileName', Sort.asc);
@@ -2113,6 +2949,42 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
   QueryBuilder<Note, Note, QAfterSortBy> sortByFileNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFolderName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFolderNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFolderPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFolderPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFullPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fullPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByFullPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fullPath', Sort.desc);
     });
   }
 
@@ -2161,6 +3033,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
   QueryBuilder<Note, Note, QAfterSortBy> sortByIsDirtyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isDirty', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsInRoot() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isInRoot', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByIsInRootDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isInRoot', Sort.desc);
     });
   }
 
@@ -2334,6 +3218,30 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> thenByDisplayFileName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFileName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByDisplayFileNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByDisplayFolderName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFolderName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByDisplayFolderNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'displayFolderName', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenByFileName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fileName', Sort.asc);
@@ -2343,6 +3251,42 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByFileNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFolderName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFolderNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFolderPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFolderPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFullPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fullPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByFullPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fullPath', Sort.desc);
     });
   }
 
@@ -2403,6 +3347,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByIsDirtyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isDirty', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsInRoot() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isInRoot', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByIsInRootDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isInRoot', Sort.desc);
     });
   }
 
@@ -2548,10 +3504,47 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByDisplayFileName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'displayFileName',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByDisplayFolderName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'displayFolderName',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByFileName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'fileName', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByFolderName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'folderName', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByFolderPath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'folderPath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByFullPath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fullPath', caseSensitive: caseSensitive);
     });
   }
 
@@ -2576,6 +3569,12 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
   QueryBuilder<Note, Note, QDistinct> distinctByIsDirty() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isDirty');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByIsInRoot() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isInRoot');
     });
   }
 
@@ -2682,9 +3681,39 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, String, QQueryOperations> displayFileNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'displayFileName');
+    });
+  }
+
+  QueryBuilder<Note, String, QQueryOperations> displayFolderNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'displayFolderName');
+    });
+  }
+
   QueryBuilder<Note, String?, QQueryOperations> fileNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fileName');
+    });
+  }
+
+  QueryBuilder<Note, String, QQueryOperations> folderNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'folderName');
+    });
+  }
+
+  QueryBuilder<Note, String?, QQueryOperations> folderPathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'folderPath');
+    });
+  }
+
+  QueryBuilder<Note, String, QQueryOperations> fullPathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fullPath');
     });
   }
 
@@ -2709,6 +3738,12 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
   QueryBuilder<Note, bool, QQueryOperations> isDirtyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isDirty');
+    });
+  }
+
+  QueryBuilder<Note, bool, QQueryOperations> isInRootProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isInRoot');
     });
   }
 

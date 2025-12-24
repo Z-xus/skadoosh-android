@@ -28,6 +28,7 @@ class _NotesPageState extends State<NotesPage>
   int _currentIndex = 0;
 
   // NEW: Folder filtering state
+  final Set<String> _expandedFolders = <String>{};
   String _selectedFolder = ''; // Empty = "All", folder name = specific folder
 
   @override
@@ -110,15 +111,15 @@ class _NotesPageState extends State<NotesPage>
       final result = await _syncService!.sync();
       if (result.success) {
         _showMessage(
-          "Sync completed! Pushed: ${result.pushedNotes}, Pulled: ${result.pulledNotes}",
+          'Sync completed! Pushed: ${result.pushedNotes}, Pulled: ${result.pulledNotes}',
           isSuccess: true,
         );
         _readNotes();
       } else {
-        _showMessage("Sync failed: ${result.error}", isError: true);
+        _showMessage('Sync failed: ${result.error}', isError: true);
       }
     } catch (e) {
-      _showMessage("Sync failed: $e", isError: true);
+      _showMessage('Sync failed: $e', isError: true);
     } finally {
       setState(() => _isSyncing = false);
     }
@@ -210,7 +211,6 @@ class _NotesPageState extends State<NotesPage>
                   folders: folderStructure.getAllFolders(),
                   selectedFolder: _selectedFolder,
                   onFolderSelected: _onFolderSelected,
-                  onCreateFolder: _showCreateFolderDialog,
                   colorScheme: colorScheme,
                 ),
                 // Notes list
@@ -276,12 +276,12 @@ class _NotesPageState extends State<NotesPage>
     }
   }
 
-  void _createNoteInFolder(String folderName) {
+  void _createNoteInFolder(String folderPath) {
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, _) =>
-            EditNotePage(folderPath: folderName),
+            EditNotePage(folderPath: folderPath),
         transitionDuration: DesignTokens.animationMedium,
         transitionsBuilder: (context, animation, _, child) {
           return SlideTransition(
@@ -301,7 +301,7 @@ class _NotesPageState extends State<NotesPage>
 
   void _showCreateFolderDialog() {
     final controller = TextEditingController();
-
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -332,13 +332,19 @@ class _NotesPageState extends State<NotesPage>
           TextButton(
             onPressed: () {
               final folderName = controller.text.trim();
-              if (folderName.isNotEmpty &&
-                  FolderService.isValidFolderName(folderName)) {
+              if (folderName.isNotEmpty && FolderService.isValidFolderName(folderName)) {
                 Navigator.of(context).pop();
                 _createNoteInFolder(folderName);
               } else {
                 _showMessage('Invalid folder name', isError: true);
               }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
             },
             child: const Text('Create'),
           ),
@@ -420,7 +426,7 @@ class _NotesPageState extends State<NotesPage>
       // Hide FAB if not on Notes page
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
-              onPressed: _createNoteInCurrentFolder,
+              onPressed: _createNote,
               elevation: 2,
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
@@ -666,9 +672,9 @@ class _SwipeableNoteTileState extends State<_SwipeableNoteTile>
 
     if (diff.inDays == 0) return 'Today';
     if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return "${diff.inDays} days ago";
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
 
-    return "${date.day}/${date.month}/${date.year}";
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   @override
@@ -883,186 +889,176 @@ class _EmptyNotesView extends StatelessWidget {
   }
 }
 
-/// Horizontal scrollable folder chips bar
-class _FolderChipsBar extends StatelessWidget {
-  final List<FolderInfo> folders;
-  final String selectedFolder;
-  final Function(String) onFolderSelected;
-  final VoidCallback onCreateFolder;
+/// Widget that displays notes organized in a folder tree structure
+class _FolderTreeView extends StatelessWidget {
+  final FolderStructure folderStructure;
+  final Set<String> expandedFolders;
+  final Function(String) onFolderToggle;
+  final Function(Note) onNoteEdit;
+  final Function(int) onNoteArchive;
+  final Function(int) onNoteDelete;
+  final VoidCallback onCreateNote;
+  final Function(String) onCreateNoteInFolder;
   final ColorScheme colorScheme;
 
-  const _FolderChipsBar({
-    required this.folders,
-    required this.selectedFolder,
-    required this.onFolderSelected,
-    required this.onCreateFolder,
+  const _FolderTreeView({
+    required this.folderStructure,
+    required this.expandedFolders,
+    required this.onFolderToggle,
+    required this.onNoteEdit,
+    required this.onNoteArchive,
+    required this.onNoteDelete,
+    required this.onCreateNote,
+    required this.onCreateNoteInFolder,
     required this.colorScheme,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: folders.length + 1, // +1 for create folder button
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          // Create folder button at the end
-          if (index == folders.length) {
-            return Center(
-              child: InkWell(
-                onTap: onCreateFolder,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate(_buildFolderTree()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildFolderTree() {
+    final widgets = <Widget>[];
+
+    // First, add all root-level notes
+    final rootNotes = folderStructure.getNotesInFolder('');
+    for (final note in rootNotes) {
+      widgets.add(_buildNoteItem(note, 0));
+    }
+
+    // Then add folder structure
+    final topLevelFolders = folderStructure.getFoldersAtDepth(1);
+    for (final folder in topLevelFolders) {
+      widgets.add(_buildFolderItem(folder, 0));
+
+      // Add folder contents if expanded
+      if (expandedFolders.contains(folder.path)) {
+        widgets.addAll(_buildFolderContents(folder, 1));
+      }
+    }
+
+    return widgets;
+  }
+
+  List<Widget> _buildFolderContents(FolderInfo folder, int depth) {
+    final widgets = <Widget>[];
+
+    // Add notes in this folder
+    final notes = folderStructure.getNotesInFolder(folder.path);
+    for (final note in notes) {
+      widgets.add(_buildNoteItem(note, depth));
+    }
+
+    // Add subfolders
+    final subfolders = folderStructure.getChildFolders(folder.path);
+    for (final subfolder in subfolders) {
+      widgets.add(_buildFolderItem(subfolder, depth));
+
+      // Add subfolder contents if expanded
+      if (expandedFolders.contains(subfolder.path)) {
+        widgets.addAll(_buildFolderContents(subfolder, depth + 1));
+      }
+    }
+
+    return widgets;
+  }
+
+  Widget _buildFolderItem(FolderInfo folder, int depth) {
+    final isExpanded = expandedFolders.contains(folder.path);
+    final noteCount = folderStructure.getTotalNotesInFolderRecursive(
+      folder.path,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          SizedBox(width: depth * 20.0), // Indentation
+          Expanded(
+            child: InkWell(
+              onTap: () => onFolderToggle(folder.path),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.3,
                   ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isExpanded ? Icons.folder_open : Icons.folder,
+                      size: 20,
+                      color: colorScheme.primary,
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.add_rounded,
-                        size: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'New Folder',
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        folder.name,
                         style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
                         ),
                       ),
+                    ),
+                    if (noteCount > 0) ...[
+                      Text(
+                        '$noteCount',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                     ],
-                  ),
+                    Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 16,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
               ),
-            );
-          }
-
-          // Regular folder chips
-          final folder = folders[index];
-          final isSelected = selectedFolder == folder.name;
-
-          return FilterChip(
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(folder.displayName),
-                if (folder.noteCount > 0) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.onPrimary.withValues(alpha: 0.2)
-                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "${folder.noteCount}",
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
             ),
-            selected: isSelected,
-            showCheckmark: false, // Remove the tick icon
-            onSelected: (_) => onFolderSelected(folder.name),
-            backgroundColor: colorScheme.surface,
-            selectedColor: colorScheme.primary,
-            labelStyle: TextStyle(
-              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
-            side: BorderSide(
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          );
-        },
+          ),
+          // Add note to folder button
+          IconButton(
+            onPressed: () => onCreateNoteInFolder(folder.path),
+            icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
+            tooltip: 'Add note to ${folder.name}',
+          ),
+        ],
       ),
     );
   }
-}
 
-/// Empty state for when a folder has no notes
-class _EmptyFolderView extends StatelessWidget {
-  final String folderName;
-  final VoidCallback onCreateNote;
-  final ThemeData theme;
-
-  const _EmptyFolderView({
-    required this.folderName,
-    required this.onCreateNote,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = theme.colorScheme;
-    final isAllFolder = folderName == 'All';
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isAllFolder ? Icons.edit_note_rounded : Icons.folder_outlined,
-            size: 64,
-            color: colorScheme.surfaceContainerHighest,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            isAllFolder ? "No notes yet" : "No notes in $folderName",
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isAllFolder
-                ? 'Create your first note'
-                : 'Add a note to this folder',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: onCreateNote,
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(isAllFolder ? 'Create Note' : 'Add Note'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: colorScheme.primary,
-              side: BorderSide(
-                color: colorScheme.outline.withValues(alpha: 0.3),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildNoteItem(Note note, int depth) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: 8.0,
+        left: depth * 20.0, // Indentation
+      ),
+      child: _SwipeableNoteTile(
+        key: ValueKey(note.id),
+        note: note,
+        onTap: () => onNoteEdit(note),
+        onArchive: () => onNoteArchive(note.id),
+        onDelete: () => onNoteDelete(note.id),
       ),
     );
   }

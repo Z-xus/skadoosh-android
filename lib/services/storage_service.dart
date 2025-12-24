@@ -48,7 +48,18 @@ class StorageService {
 
   Future<File> writeNote(String filename, String content) async {
     await init();
-    final file = File(p.join(_baseDir.path, filename));
+
+    // Handle folder creation if filename contains path separators
+    final fullPath = p.join(_baseDir.path, filename);
+    final file = File(fullPath);
+
+    // Create parent directories if they don't exist
+    final parentDir = file.parent;
+    if (!await parentDir.exists()) {
+      await parentDir.create(recursive: true);
+      print('📁 Created folder structure: ${parentDir.path}');
+    }
+
     final result = await file.writeAsString(content);
     print('📝 Note file saved: ${file.path}');
 
