@@ -375,16 +375,6 @@ class _NotesPageState extends State<NotesPage>
         actions: [
           // Only show Sync button on Notes page
           if (_currentIndex == 0) ...[
-            // Create Folder button
-            IconButton(
-              onPressed: _showCreateFolderDialog,
-              icon: Icon(
-                Icons.create_new_folder_rounded,
-                color: colorScheme.onSurfaceVariant,
-                size: 22,
-              ),
-              tooltip: 'Create folder',
-            ),
             Semantics(
               label: _isSyncing
                   ? 'Syncing notes in progress'
@@ -904,105 +894,100 @@ class _FolderChipsBar extends StatelessWidget {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: folders.length + 1, // +1 for create folder button
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          // Create folder button at the end
-          if (index == folders.length) {
-            return Center(
+      child: Row(
+        children: [
+          // Scrollable folder list
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: folders.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                // Regular folder chips
+                final folder = folders[index];
+                final isSelected = selectedFolder == folder.name;
+
+                return FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(folder.displayName),
+                      if (folder.noteCount > 0) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colorScheme.onPrimary.withValues(alpha: 0.2)
+                                : colorScheme.onSurfaceVariant.withValues(
+                                    alpha: 0.2,
+                                  ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            "${folder.noteCount}",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  selected: isSelected,
+                  showCheckmark: false, // Remove the tick icon
+                  onSelected: (_) => onFolderSelected(folder.name),
+                  backgroundColor: colorScheme.surface,
+                  selectedColor: colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: isSelected
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                  side: BorderSide(
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Fixed create folder button on the right
+          Container(
+            width: 48, // Fixed width to prevent overflow
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
               child: InkWell(
                 onTap: onCreateFolder,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: colorScheme.outline.withValues(alpha: 0.3),
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.add_rounded,
-                        size: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'New Folder',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  child: Icon(
+                    Icons.create_new_folder_rounded,
+                    size: 18,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-            );
-          }
-
-          // Regular folder chips
-          final folder = folders[index];
-          final isSelected = selectedFolder == folder.name;
-
-          return FilterChip(
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(folder.displayName),
-                if (folder.noteCount > 0) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.onPrimary.withValues(alpha: 0.2)
-                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "${folder.noteCount}",
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? colorScheme.onPrimary
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
             ),
-            selected: isSelected,
-            showCheckmark: false, // Remove the tick icon
-            onSelected: (_) => onFolderSelected(folder.name),
-            backgroundColor: colorScheme.surface,
-            selectedColor: colorScheme.primary,
-            labelStyle: TextStyle(
-              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
-            side: BorderSide(
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
