@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:popover/popover.dart';
 import 'package:skadoosh_app/components/note_settings.dart';
+import 'package:skadoosh_app/components/cached_network_image.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/theme/design_tokens.dart';
 import 'package:intl/intl.dart';
@@ -124,6 +125,19 @@ class NoteTile extends StatelessWidget {
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+
+                          // Image preview
+                          if (note.hasImages && note.imageUrls.isNotEmpty) ...[
+                            SizedBox(height: DesignTokens.spaceXS.top),
+                            CachedNoteImagesWidget(
+                              noteId: note.serverId ?? '',
+                              imageUrls: note.imageUrls.take(3).toList(),
+                              maxDisplayCount: 3,
+                              onImageRemoved: (imageUrl) {
+                                // Handle image removal if needed
+                              },
                             ),
                           ],
 

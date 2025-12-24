@@ -125,19 +125,19 @@ router.post('/push', verifyKeyAuth, async (req, res) => {
       await client.query('BEGIN');
 
       for (const note of notes) {
-        const { localId, serverId, title, content, eventType, createdAt, updatedAt } = note;
+        const { localId, serverId, title, content, eventType, createdAt, updatedAt, imageUrls, hasImages } = note;
 
         if (eventType === 'create') {
           console.log('Creating note with params:', {
-            groupId, title, content: content || '', deviceId, keyFingerprint, localId, createdAt, updatedAt
+            groupId, title, content: content || '', deviceId, keyFingerprint, localId, createdAt, updatedAt, imageUrls: imageUrls || [], hasImages: hasImages || false
           });
           
           // Create new note
           const noteResult = await client.query(`
-            INSERT INTO notes (sync_group_id, title, content, device_id, key_fingerprint, local_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO notes (sync_group_id, title, content, device_id, key_fingerprint, local_id, created_at, updated_at, images, has_images)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id, created_at, updated_at
-          `, [groupId, title, content || '', deviceId, keyFingerprint, localId, createdAt, updatedAt]);
+          `, [groupId, title, content || '', deviceId, keyFingerprint, localId, createdAt, updatedAt, JSON.stringify(imageUrls || []), hasImages || false]);
 
           const newNoteId = noteResult.rows[0].id;
 
@@ -159,10 +159,10 @@ router.post('/push', verifyKeyAuth, async (req, res) => {
           // Update existing note (only if it belongs to this group)
           const updateResult = await client.query(`
             UPDATE notes 
-            SET title = $1, content = $2, updated_at = $3, version = version + 1
-            WHERE id = $4 AND sync_group_id = $5
+            SET title = $1, content = $2, updated_at = $3, version = version + 1, images = $4, has_images = $5
+            WHERE id = $6 AND sync_group_id = $7
             RETURNING id, updated_at, version
-          `, [title, content || '', updatedAt, serverId, groupId]);
+          `, [title, content || '', updatedAt, JSON.stringify(imageUrls || []), hasImages || false, serverId, groupId]);
 
           if (updateResult.rows.length > 0) {
             // Create sync event
@@ -325,7 +325,7 @@ router.get('/notes', verifyKeyAuth, async (req, res) => {
     const groupId = req.syncGroupId;
 
     const result = await pool.query(`
-      SELECT id, title, content, created_at, updated_at, version
+      SELECT id, title, content, created_at, updated_at, version, images, has_images
       FROM notes
       WHERE sync_group_id = $1
       ORDER BY updated_at DESC

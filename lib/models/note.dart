@@ -46,6 +46,11 @@ class Note {
   bool needsSync = false;
   String deviceId = '';
 
+  // Image support
+  List<String> imageUrls = []; // URLs of images stored in R2
+  List<String> localImagePaths = []; // Local cached image paths
+  bool hasImages = false;
+
   // Helper method to check if note should be permanently deleted (30 days)
   bool get shouldPermanentlyDelete {
     if (!isDeleted || deletedAt == null) return false;

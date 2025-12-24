@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const syncRoutes = require('./routes/sync');
 const userRoutes = require('./routes/users');
 const deviceRoutes = require('./routes/devices');
+const imageRoutes = require('./routes/images');
 const { initDatabase } = require('./database/init');
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/images', imageRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

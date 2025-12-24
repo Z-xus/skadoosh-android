@@ -242,12 +242,19 @@ class NoteDatabase extends ChangeNotifier {
     String? serverId,
     DateTime? lastSyncedAt,
     bool? needsSync,
+    List<String>? imageUrls,
+    List<String>? localImagePaths,
+    bool? hasImages,
   }) async {
     final existingNote = await isar.notes.get(id);
     if (existingNote != null) {
       if (serverId != null) existingNote.serverId = serverId;
       if (lastSyncedAt != null) existingNote.lastSyncedAt = lastSyncedAt;
       if (needsSync != null) existingNote.needsSync = needsSync;
+      if (imageUrls != null) existingNote.imageUrls = imageUrls;
+      if (localImagePaths != null)
+        existingNote.localImagePaths = localImagePaths;
+      if (hasImages != null) existingNote.hasImages = hasImages;
       await isar.writeTxn(() async {
         await isar.notes.put(existingNote);
       });

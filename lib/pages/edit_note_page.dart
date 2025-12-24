@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
+import 'package:skadoosh_app/services/image_service.dart';
 import 'package:skadoosh_app/theme/theme_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -456,26 +457,111 @@ class _EditNotePageState extends State<EditNotePage> {
 
   Future<void> _insertImageAsWidget(XFile imageFile) async {
     try {
-      final selection = _editorState.selection;
-      if (selection == null || !selection.isCollapsed) return;
-
-      // Create images directory if it doesn't exist
-      final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory('${appDir.path}/images');
-      if (!await imagesDir.exists()) {
-        await imagesDir.create(recursive: true);
+      // Fix selection issue - get or create valid selection
+      Selection? selection = _editorState.selection;
+      if (selection == null || !selection.isCollapsed) {
+        // Create selection at end of document
+        final document = _editorState.document;
+        final lastNode = document.root.children.lastOrNull;
+        if (lastNode != null) {
+          selection = Selection.collapsed(
+            Position(path: lastNode.path, offset: lastNode.delta?.length ?? 0),
+          );
+        } else {
+          // Document is empty, create first paragraph
+          final transaction = _editorState.transaction;
+          transaction.insertNode([0], paragraphNode());
+          await _editorState.apply(transaction);
+          selection = Selection.collapsed(Position(path: [0], offset: 0));
+        }
       }
 
-      // Generate a unique filename
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = path.extension(imageFile.path);
-      final fileName = 'image_$timestamp$extension';
-      final filePath = '${imagesDir.path}/$fileName';
+      String imageUrl;
 
-      // Copy the image to our images directory
-      final imageBytes = await imageFile.readAsBytes();
-      final file = File(filePath);
-      await file.writeAsBytes(imageBytes);
+      // ALWAYS save locally first (consistent with note creation flow)
+      print('📱 Saving image locally...');
+      final localImagePath = await _saveImageLocally(imageFile);
+      imageUrl = localImagePath; // Default to local path
+
+      // If note is synced, ALSO upload to R2 for immediate display
+      String? r2ImageUrl;
+      if (widget.note != null &&
+          widget.note!.serverId != null &&
+          widget.note!.serverId!.isNotEmpty) {
+        try {
+          print(
+            '🔄 Note is synced, also uploading to R2 for immediate display...',
+          );
+          final imageService = ImageService();
+          await imageService.initialize();
+
+          final imageFileObj = File(imageFile.path);
+          final result = await imageService.uploadImage(
+            imageFile: imageFileObj,
+            noteId: widget.note!.serverId!,
+          );
+
+          if (result.success && result.publicUrl != null) {
+            r2ImageUrl = result.publicUrl!;
+            imageUrl = r2ImageUrl; // Use R2 URL for display
+            print('✅ R2 upload successful: $r2ImageUrl');
+          }
+        } catch (e) {
+          print('❌ R2 upload failed, will use local path: $e');
+          // Continue with local path
+        }
+      }
+
+      // Track local and R2 paths for sync process
+      if (widget.note != null) {
+        final currentNote = widget.note!;
+        final currentLocalPaths = List<String>.from(
+          currentNote.localImagePaths,
+        );
+        final currentR2Urls = List<String>.from(currentNote.imageUrls);
+
+        // Always add to local paths
+        currentLocalPaths.add(localImagePath);
+
+        // Add to R2 URLs if uploaded successfully
+        if (r2ImageUrl != null) {
+          currentR2Urls.add(r2ImageUrl);
+        }
+
+        // Create updated note
+        final updatedNote = Note()
+          ..id = currentNote.id
+          ..title = currentNote.title
+          ..body = currentNote.body
+          ..fileName = currentNote.fileName
+          ..relativePath = currentNote.relativePath
+          ..folderPath = currentNote.folderPath
+          ..shadowContentZLib = currentNote.shadowContentZLib
+          ..lastSyncedHash = currentNote.lastSyncedHash
+          ..isDirty =
+              true // Mark as dirty since we added an image
+          ..isDeleted = currentNote.isDeleted
+          ..deletedAt = currentNote.deletedAt
+          ..isArchived = currentNote.isArchived
+          ..archivedAt = currentNote.archivedAt
+          ..serverId = currentNote.serverId
+          ..createdAt = currentNote.createdAt
+          ..updatedAt = DateTime.now()
+          ..lastSyncedAt = currentNote.lastSyncedAt
+          ..needsSync =
+              true // Mark for sync since content changed
+          ..deviceId = currentNote.deviceId
+          ..imageUrls = currentR2Urls
+          ..localImagePaths = currentLocalPaths
+          ..hasImages = true;
+
+        await NoteDatabase.isar.writeTxn(() async {
+          await NoteDatabase.isar.notes.put(updatedNote);
+        });
+        print('✅ Local image path saved to database');
+      }
+
+      // Continue with the rest of the logic...
 
       // Get the node and path for insertion
       final node = _editorState.getNodeAtPath(selection.end.path);
@@ -487,7 +573,7 @@ class _EditNotePageState extends State<EditNotePage> {
       final imageNode = Node(
         type: 'image',
         attributes: {
-          'url': file.path,
+          'url': imageUrl,
           'align': 'center',
           'width': 300.0,
           'height': 200.0,
@@ -513,8 +599,12 @@ class _EditNotePageState extends State<EditNotePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Image added to note'),
+          SnackBar(
+            content: Text(
+              imageUrl.startsWith('http')
+                  ? 'Image uploaded to cloud and added to note'
+                  : 'Image added to note (will sync when note syncs)',
+            ),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -532,6 +622,28 @@ class _EditNotePageState extends State<EditNotePage> {
         );
       }
     }
+  }
+
+  Future<String> _saveImageLocally(XFile imageFile) async {
+    // Create images directory if it doesn't exist
+    final appDir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory('${appDir.path}/images');
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
+
+    // Generate a unique filename
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = path.extension(imageFile.path);
+    final fileName = 'image_$timestamp$extension';
+    final filePath = '${imagesDir.path}/$fileName';
+
+    // Copy the image to our images directory
+    final imageBytes = await imageFile.readAsBytes();
+    final file = File(filePath);
+    await file.writeAsBytes(imageBytes);
+
+    return file.path;
   }
 
   @override

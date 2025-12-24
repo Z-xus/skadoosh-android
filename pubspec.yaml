@@ -62,6 +62,8 @@ dependencies:
   # Image support packages
   image_picker: ^1.1.2
   permission_handler: ^11.3.1
+  image: ^4.3.0
+  cached_network_image: ^3.4.1
 
 
 

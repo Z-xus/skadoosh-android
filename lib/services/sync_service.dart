@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skadoosh_app/models/note_database.dart';
+import 'package:skadoosh_app/services/image_cache_service.dart';
 
 class SyncService {
   static const String _baseUrlKey = 'sync_server_url';
@@ -29,6 +30,9 @@ class SyncService {
       _deviceId = await _generateDeviceId();
       await prefs.setString(_deviceIdKey, _deviceId!);
     }
+
+    // Initialize image cache service
+    await ImageCacheService.instance.initialize();
 
     print('SyncService initialized:');
     print('- Base URL: $_baseUrl');
@@ -178,6 +182,8 @@ class SyncService {
         'serverId': note.serverId,
         'title': note.title,
         'content': '', // Add content field when you extend the Note model
+        'imageUrls': note.imageUrls,
+        'hasImages': note.hasImages,
         'eventType': note.serverId == null ? 'create' : 'update',
         'createdAt': note.createdAt?.toIso8601String(),
         'updatedAt': note.updatedAt?.toIso8601String(),
@@ -256,6 +262,8 @@ class SyncService {
         final serverId = change['id'];
         final title = change['title'];
         final eventType = change['event_type'];
+        final imageUrls = (change['images'] as List?)?.cast<String>() ?? [];
+        final hasImages = change['has_images'] ?? false;
 
         if (eventType == 'create') {
           // Check if we already have this note
@@ -265,13 +273,24 @@ class SyncService {
 
           if (existingNote == null) {
             await _noteDatabase.addNote(title);
-            // Update the created note with server ID
+            // Update the created note with server ID and image data
             final newNote = _noteDatabase.currentNotes.last;
+
+            // Cache images locally
+            List<String> localImagePaths = [];
+            if (imageUrls.isNotEmpty) {
+              localImagePaths = await ImageCacheService.instance
+                  .cacheImagesForNote(imageUrls);
+            }
+
             await _noteDatabase.updateSyncStatus(
               newNote.id,
               serverId: serverId,
               lastSyncedAt: DateTime.now(),
               needsSync: false,
+              imageUrls: imageUrls,
+              localImagePaths: localImagePaths,
+              hasImages: hasImages,
             );
             pulledNotes++;
           }
@@ -283,10 +302,21 @@ class SyncService {
 
           if (existingNote != null) {
             await _noteDatabase.updateNote(existingNote.id, title);
+
+            // Cache images locally if there are new ones
+            List<String> localImagePaths = [];
+            if (imageUrls.isNotEmpty) {
+              localImagePaths = await ImageCacheService.instance
+                  .cacheImagesForNote(imageUrls);
+            }
+
             await _noteDatabase.updateSyncStatus(
               existingNote.id,
               lastSyncedAt: DateTime.now(),
               needsSync: false,
+              imageUrls: imageUrls,
+              localImagePaths: localImagePaths,
+              hasImages: hasImages,
             );
             pulledNotes++;
           }
