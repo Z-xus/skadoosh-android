@@ -8,6 +8,7 @@ import 'package:skadoosh_app/models/note_database.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/services/crypto_utils.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
+import 'package:skadoosh_app/services/image_sync_service.dart';
 import 'package:diff_match_patch/diff_match_patch.dart';
 
 class KeyBasedSyncService {
@@ -210,7 +211,15 @@ class KeyBasedSyncService {
       print('\n--- Step 2: Pulling remote changes ---');
       final pullResult = await _pullRemoteChanges();
 
-      // Step 3: Update last sync time with server timestamp
+      // Step 3: Process image uploads for newly synced notes
+      print('\n--- Step 3: Processing image uploads ---');
+      await _processImageUploads();
+
+      // Debug: Print queue status after processing
+      final imageSyncService = ImageSyncService.instance;
+      await imageSyncService.debugPrintQueueStatus();
+
+      // Step 4: Update last sync time with server timestamp
       final prefs = await SharedPreferences.getInstance();
       final timestampToStore =
           pullResult.serverTimestamp ?? DateTime.now().toIso8601String();
@@ -745,7 +754,35 @@ class KeyBasedSyncService {
     }
   }
 
-  // Test connection to sync server
+  // Process image uploads after sync
+  Future<void> _processImageUploads() async {
+    try {
+      // Initialize and process image uploads
+      final imageSyncService = ImageSyncService.instance;
+      await imageSyncService.initialize();
+
+      // First, scan all notes for any local images that might not be queued yet
+      print('🔍 Scanning all notes for local images...');
+      for (final note in _noteDatabase.currentNotes) {
+        await imageSyncService.scanAndQueueLocalImagesInNote(note);
+      }
+
+      // Update server IDs for pending uploads
+      await imageSyncService.updateServerIdsForPendingUploads();
+
+      // Process the upload queue
+      final processedCount = await imageSyncService.processUploadQueue();
+
+      print('📸 Processed $processedCount image uploads after sync');
+
+      // Clean up old completed uploads
+      await imageSyncService.cleanupCompletedUploads();
+    } catch (e) {
+      print('❌ Error processing image uploads: $e');
+      // Don't fail the entire sync if image processing fails
+    }
+  }
+
   Future<bool> testConnection() async {
     if (_baseUrl == null) return false;
 

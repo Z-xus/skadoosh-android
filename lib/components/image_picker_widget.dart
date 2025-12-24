@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:skadoosh_app/services/image_service.dart';
+import 'package:skadoosh_app/services/image_sync_service.dart';
+import 'package:skadoosh_app/models/pending_image_upload.dart';
 
 class ImagePickerWidget extends StatefulWidget {
   final String noteId;
   final Function(String imageUrl) onImageAdded;
+  final bool showSyncStatus;
 
   const ImagePickerWidget({
     super.key,
     required this.noteId,
     required this.onImageAdded,
+    this.showSyncStatus = true,
   });
 
   @override
@@ -22,11 +26,35 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
   final ImagePicker _picker = ImagePicker();
   final ImageService _imageService = ImageService();
   bool _isUploading = false;
+  List<PendingImageUpload> _pendingUploads = [];
 
   @override
   void initState() {
     super.initState();
     _initializeImageService();
+    if (widget.showSyncStatus) {
+      _loadPendingUploads();
+    }
+  }
+
+  Future<void> _loadPendingUploads() async {
+    if (widget.noteId.isEmpty) return;
+
+    try {
+      final noteId = int.tryParse(widget.noteId);
+      if (noteId != null) {
+        final imageSyncService = ImageSyncService.instance;
+        await imageSyncService.initialize();
+        final uploads = await imageSyncService.getPendingUploadsForNote(noteId);
+        if (mounted) {
+          setState(() {
+            _pendingUploads = uploads;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading pending uploads: $e');
+    }
   }
 
   Future<void> _initializeImageService() async {
@@ -180,25 +208,66 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ElevatedButton.icon(
-            onPressed: _isUploading ? null : _showImageSourceDialog,
-            icon: _isUploading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_a_photo),
-            label: Text(_isUploading ? 'Uploading...' : 'Add Image'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _isUploading ? null : _showImageSourceDialog,
+                icon: _isUploading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_a_photo),
+                label: Text(_isUploading ? 'Uploading...' : 'Add Image'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_isUploading)
+                const Text(
+                  'Please wait...',
+                  style: TextStyle(color: Colors.grey),
+                ),
+            ],
           ),
-          const SizedBox(width: 8),
-          if (_isUploading)
-            const Text('Please wait...', style: TextStyle(color: Colors.grey)),
+          // Sync status indicator
+          if (widget.showSyncStatus && _pendingUploads.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.cloud_upload,
+                    size: 16,
+                    color: Colors.orange.shade700,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_pendingUploads.length} image${_pendingUploads.length == 1 ? '' : 's'} pending sync',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

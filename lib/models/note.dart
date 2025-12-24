@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:archive/archive.dart';
 import 'package:skadoosh_app/services/storage_service.dart';
@@ -50,6 +51,29 @@ class Note {
   List<String> imageUrls = []; // URLs of images stored in R2
   List<String> localImagePaths = []; // Local cached image paths
   bool hasImages = false;
+
+  // Helper methods for image sync status
+  bool get hasPendingImageUploads {
+    return localImagePaths.isNotEmpty &&
+        localImagePaths.length > imageUrls.length;
+  }
+
+  bool get hasUnSyncedImages {
+    return localImagePaths.isNotEmpty && imageUrls.isEmpty;
+  }
+
+  int get pendingImageCount {
+    if (localImagePaths.isEmpty) return 0;
+    return math.max(0, localImagePaths.length - imageUrls.length);
+  }
+
+  List<String> get syncedImageUrls {
+    return imageUrls.where((url) => url.startsWith('http')).toList();
+  }
+
+  List<String> get localOnlyImagePaths {
+    return localImagePaths.where((path) => !path.startsWith('http')).toList();
+  }
 
   // Helper method to check if note should be permanently deleted (30 days)
   bool get shouldPermanentlyDelete {

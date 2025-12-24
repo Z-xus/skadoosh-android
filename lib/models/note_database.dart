@@ -3,6 +3,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/habit.dart';
+import 'package:skadoosh_app/models/pending_image_upload.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 
@@ -18,6 +19,7 @@ class NoteDatabase extends ChangeNotifier {
       NoteSchema,
       HabitSchema,
       TodoSchema,
+      PendingImageUploadSchema,
     ], directory: dir.path);
   }
 
