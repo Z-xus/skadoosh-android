@@ -333,6 +333,9 @@ class KeyBasedSyncService {
           'createdAt': note.createdAt?.toIso8601String(),
           'updatedAt': note.updatedAt?.toIso8601String(),
           'isDeleted': note.isDeleted,
+          'folderPath': note.folderPath ?? '',
+          'fileName': note.fileName ?? '',
+          'relativePath': note.relativePath ?? '',
         };
 
         if (shadowContent == null || shadowContent.isEmpty) {
@@ -509,10 +512,19 @@ class KeyBasedSyncService {
           // Check multiple ways to avoid duplicates:
           // 1. Check by server ID
           // 2. Check by title and approximate time (for notes created locally that might have been pushed)
+          // 3. Check by relativePath to prevent creating duplicate files
 
           var existingNote = _noteDatabase.currentNotes
               .where((n) => n.serverId == serverId)
               .firstOrNull;
+
+          // If we already have this server ID, skip it entirely
+          if (existingNote != null) {
+            print(
+              '✓ Note with server ID $serverId already exists (ID: ${existingNote.id}), skipping',
+            );
+            continue;
+          }
 
           // If not found by server ID, check by title and timing to avoid duplicates
           // from our own local notes that were just pushed
@@ -521,7 +533,6 @@ class KeyBasedSyncService {
                 .where(
                   (n) =>
                       n.title.trim() == title.trim() && // Match title
-                      n.body.trim() == body.trim() && // Also match body content
                       n.serverId == null && // Local note without server ID
                       n.createdAt != null &&
                       eventTime.difference(n.createdAt!).abs().inMinutes <
@@ -546,18 +557,72 @@ class KeyBasedSyncService {
 
           // If still no match, create a new note (genuine remote note)
           if (existingNote == null) {
-            // Create file for the note content
-            final fileName = _storageService.sanitizeFilename(title);
-            await _storageService.writeNote(fileName, body);
+            // Extract folder information from change
+            final remoteFolderPath = change['folder_path'] as String? ?? '';
+            final remoteFileName = change['file_name'] as String? ?? '';
+            final remoteRelativePath = change['relative_path'] as String? ?? '';
+
+            // Use remote paths if available, otherwise generate new ones
+            String fileName;
+            String relativePath;
+            String folderPath;
+
+            if (remoteFileName.isNotEmpty && remoteRelativePath.isNotEmpty) {
+              // Use remote folder structure
+              fileName = remoteFileName;
+              relativePath = remoteRelativePath;
+              folderPath = remoteFolderPath;
+              print(
+                '📁 Creating note in folder: ${folderPath.isEmpty ? '(root)' : folderPath}',
+              );
+            } else {
+              // Generate new paths (backward compatibility)
+              fileName = _storageService.sanitizeFilename(title);
+              relativePath = fileName;
+              folderPath = '';
+            }
+
+            // Check if a note with this relativePath already exists
+            final noteWithSamePath = _noteDatabase.currentNotes
+                .where((n) => n.relativePath == relativePath)
+                .firstOrNull;
+
+            if (noteWithSamePath != null) {
+              // Note already exists with this path, just update server ID
+              print(
+                '📌 Note with path $relativePath already exists (ID: ${noteWithSamePath.id}), updating server ID',
+              );
+              await _noteDatabase.updateSyncStatus(
+                noteWithSamePath.id,
+                serverId: serverId,
+                lastSyncedAt: DateTime.now(),
+                needsSync: false,
+              );
+              pulledNotes++;
+              continue;
+            }
+
+            // Create file (this will automatically create folders if needed)
+            await _storageService.writeNote(relativePath, body);
 
             // Create note with explicit needsSync = false since it's from server
             final noteId = await _noteDatabase.addNoteWithId(
               title,
               body: '', // Content is in file, not database
               fileName: fileName,
-              relativePath: fileName, // CRITICAL FIX: Set relativePath!
+              relativePath: relativePath,
               needsSync: false,
             );
+
+            // Update folderPath separately since it's not in addNoteWithId params
+            final createdNote = await NoteDatabase.isar.notes.get(noteId);
+            if (createdNote != null) {
+              createdNote.folderPath = folderPath;
+              await NoteDatabase.isar.writeTxn(() async {
+                await NoteDatabase.isar.notes.put(createdNote);
+              });
+            }
+
             await _noteDatabase.updateSyncStatus(
               noteId,
               serverId: serverId,
@@ -565,7 +630,7 @@ class KeyBasedSyncService {
               needsSync: false,
             );
             print(
-              'Created new note from remote: $serverId (ID: $noteId) with file: $fileName',
+              'Created new note from remote: $serverId (ID: $noteId) with path: $relativePath',
             );
             pulledNotes++;
           }
@@ -664,28 +729,62 @@ class KeyBasedSyncService {
             // Only update if the remote version is newer
             if (existingNote.lastSyncedAt == null ||
                 eventTime.isAfter(existingNote.lastSyncedAt!)) {
-              // Update the file with new content
-              if (existingNote.relativePath != null) {
-                await _storageService.writeNote(
-                  existingNote.relativePath!,
-                  body,
-                );
-                print('Updated file content for note ${existingNote.id}');
+              // Extract folder information from change
+              final remoteFolderPath = change['folder_path'] as String? ?? '';
+              final remoteFileName = change['file_name'] as String? ?? '';
+              final remoteRelativePath =
+                  change['relative_path'] as String? ?? '';
+
+              // Determine if folder structure changed
+              final oldRelativePath = existingNote.relativePath;
+              String newRelativePath;
+
+              if (remoteRelativePath.isNotEmpty) {
+                newRelativePath = remoteRelativePath;
+              } else if (existingNote.relativePath != null) {
+                newRelativePath = existingNote.relativePath!;
               } else {
-                // Legacy note without relativePath - create file and set path
-                final fileName = _storageService.sanitizeFilename(title);
-                await _storageService.writeNote(fileName, body);
-                existingNote.relativePath = fileName;
-                print(
-                  'Created file for legacy note ${existingNote.id}: $fileName',
-                );
+                // Legacy note - generate new path
+                newRelativePath = _storageService.sanitizeFilename(title);
               }
+
+              // If path changed, move the file
+              if (oldRelativePath != null &&
+                  oldRelativePath != newRelativePath) {
+                print(
+                  '📁 Moving note from $oldRelativePath to $newRelativePath',
+                );
+                // Read old content
+                final oldContent = await _storageService.readNote(
+                  oldRelativePath,
+                );
+                // Write to new location
+                await _storageService.writeNote(newRelativePath, body);
+                // Delete old file
+                await _storageService.deleteNote(oldRelativePath);
+              } else {
+                // Update in current location
+                await _storageService.writeNote(newRelativePath, body);
+              }
+
+              // Update note metadata including folder path
+              existingNote.relativePath = newRelativePath;
+              existingNote.fileName = remoteFileName.isNotEmpty
+                  ? remoteFileName
+                  : existingNote.fileName;
+              existingNote.folderPath = remoteFolderPath;
 
               await _noteDatabase.updateNoteFromSync(
                 existingNote.id,
                 title,
                 body: '', // Content is in file, not database
               );
+
+              // Save folder path change
+              await NoteDatabase.isar.writeTxn(() async {
+                await NoteDatabase.isar.notes.put(existingNote);
+              });
+
               await _noteDatabase.updateSyncStatus(
                 existingNote.id,
                 lastSyncedAt: DateTime.now(),
