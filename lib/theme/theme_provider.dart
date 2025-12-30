@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'dart:async';
 import 'base/theme_family.dart';
 import 'base/semantic_tokens.dart';
@@ -147,9 +148,31 @@ class ThemeProvider extends ChangeNotifier {
 
   // === Initialization and Persistence ===
 
-  /// Initialize theme from saved preferences
+  /// Initialize theme from saved preferences and load system colors
   Future<void> initialize() async {
     if (_initialized) return;
+
+    // Load system colors from dynamic_color
+    try {
+      final corePalette = await DynamicColorPlugin.getCorePalette();
+      if (corePalette != null) {
+        final lightScheme = corePalette.toColorScheme(
+          brightness: Brightness.light,
+        );
+        final darkScheme = corePalette.toColorScheme(
+          brightness: Brightness.dark,
+        );
+        _registry.updateSystemColors(
+          lightColorScheme: lightScheme,
+          darkColorScheme: darkScheme,
+        );
+        debugPrint('✅ System colors loaded: ${lightScheme.primary}');
+      } else {
+        debugPrint('⚠️ System colors not available, using fallback');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to load system colors: $e');
+    }
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -263,6 +286,8 @@ class ThemeProvider extends ChangeNotifier {
       colorScheme: colorScheme,
       brightness: tokens.brightness,
       scaffoldBackgroundColor: tokens.bgBase,
+      canvasColor: tokens.bgBase,
+      dialogBackgroundColor: tokens.bgSecondary,
 
       // Use existing theme building logic with semantic tokens
       textTheme: _buildTextTheme(tokens),
@@ -275,6 +300,18 @@ class ThemeProvider extends ChangeNotifier {
       inputDecorationTheme: _buildInputTheme(tokens),
       listTileTheme: _buildListTileTheme(tokens),
       dividerTheme: _buildDividerTheme(tokens),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: tokens.bgBase,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.bgSecondary,
+        surfaceTintColor: Colors.transparent,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: tokens.bgSecondary,
+        surfaceTintColor: Colors.transparent,
+      ),
 
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

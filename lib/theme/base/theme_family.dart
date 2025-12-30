@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Enumeration of available theme families
 enum ThemeFamily {
+  material('Material', 'material'),
   catppuccin('Catppuccin', 'catppuccin'),
   nord('Nord', 'nord'),
   dracula('Dracula', 'dracula');

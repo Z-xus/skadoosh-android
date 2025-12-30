@@ -164,12 +164,13 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Device Management'),
         elevation: 0,
-        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
-        backgroundColor: Theme.of(context).colorScheme.onPrimary,
+        foregroundColor: colorScheme.onSurface,
+        backgroundColor: colorScheme.surface,
         actions: [
           IconButton(onPressed: _refreshData, icon: const Icon(Icons.refresh)),
         ],
@@ -213,7 +214,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             letterSpacing: 1.2,
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
-                            color: Theme.of(context).colorScheme.inversePrimary,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -257,9 +258,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             Icon(
                               Icons.info_outline_rounded,
                               size: 14,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.inversePrimary,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -300,7 +299,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                           'Pair New Device',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.inversePrimary,
+                            color: colorScheme.onSurface,
                             fontSize: 20,
                           ),
                         ),
@@ -346,12 +345,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                foregroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary,
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
                               ),
                               child: const Text('Pair'),
                             ),
@@ -372,7 +367,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                       child: Text(
                         'Pending Requests',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.inversePrimary,
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
                           fontSize: 20,
                         ),
@@ -395,12 +390,10 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                           children: [
                             // Avatar/Icon Circle
                             CircleAvatar(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.inversePrimary,
+                              backgroundColor: colorScheme.primaryContainer,
                               child: Icon(
                                 Icons.person_outline,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: colorScheme.onPrimaryContainer,
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -496,7 +489,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                           'Paired Devices',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.inversePrimary,
+                            color: colorScheme.onSurface,
                             fontSize: 20,
                           ),
                         ),
@@ -507,16 +500,14 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                             borderRadius: BorderRadius.circular(999), // pill
                           ),
                           child: Text(
                             _pairedDevices.length.toString(),
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.inversePrimary,
+                                  color: colorScheme.onPrimary,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.2,
                                 ),
@@ -591,14 +582,12 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary,
+                                color: colorScheme.primaryContainer,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(
                                 Icons.phone_android_rounded,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: colorScheme.onPrimaryContainer,
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -625,9 +614,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           fontFamily: 'monospace',
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.inversePrimary,
+                                          color: colorScheme.onSurfaceVariant,
                                         ),
                                   ),
                                 ],
@@ -637,15 +624,13 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary,
+                                color: colorScheme.primaryContainer,
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 Icons.sync_rounded,
                                 size: 18,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: colorScheme.onPrimaryContainer,
                               ),
                             ),
                           ],

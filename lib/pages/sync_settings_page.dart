@@ -139,14 +139,17 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sync Settings'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
       ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: colorScheme.surface,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -154,7 +157,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
           children: [
             // Device Management
             Card(
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -162,8 +165,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Device Management',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -171,7 +174,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                       'Before syncing, you need to set up your device pairing. This determines which notes you can sync with other devices.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.inversePrimary,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -190,12 +193,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                           await _initializeSyncService();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary,
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                         ),
                         icon: const Icon(Icons.devices),
                         label: const Text('Manage Devices'),
@@ -210,7 +209,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
             // Server Configuration
             Card(
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -218,40 +217,34 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Sync Server Configuration',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _urlController,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Server URL',
                         hintText: 'https://your-server.com',
                         labelStyle: TextStyle(
-                          color: Theme.of(context).colorScheme.inversePrimary,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         hintStyle: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.inversePrimary.withValues(alpha: 0.6),
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                         border: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.inversePrimary,
-                          ),
+                          borderSide: BorderSide(color: colorScheme.outline),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.inversePrimary,
-                          ),
+                          borderSide: BorderSide(color: colorScheme.outline),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.inversePrimary,
+                            color: colorScheme.primary,
                             width: 2,
                           ),
                         ),
@@ -265,12 +258,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _configureSyncServer,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.secondary,
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.inversePrimary,
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
                             ),
                             child: _isLoading
                                 ? const SizedBox(
@@ -287,12 +276,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                         ElevatedButton(
                           onPressed: _isLoading ? null : _testConnection,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.secondary,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.inversePrimary,
+                            backgroundColor: colorScheme.secondary,
+                            foregroundColor: colorScheme.onSecondary,
                           ),
                           child: const Text('Test'),
                         ),
@@ -308,7 +293,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
             // Sync Status
             if (_syncStatus != null) ...[
               Card(
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.surfaceContainerHigh,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -316,12 +301,9 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                     children: [
                       Text(
                         'Sync Status',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.inversePrimary,
-                            ),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _buildStatusRow(
@@ -366,12 +348,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                               ? null
                               : _performSync,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.secondary,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.inversePrimary,
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
                           ),
                           child: _isLoading
                               ? const SizedBox(
@@ -426,7 +404,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
             // Instructions
             Card(
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -434,8 +412,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                   children: [
                     Text(
                       'Instructions',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.inversePrimary,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -448,7 +426,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                       'Note: Only notes within the same device group are synced. Pair with other devices to sync with them.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.inversePrimary,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -475,17 +453,13 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
   }
 
   Widget _buildStatusRow(String label, String value, Color color) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.inversePrimary,
-            ),
-          ),
+          Text(label, style: TextStyle(color: colorScheme.onSurface)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'base/semantic_tokens.dart';
 import 'base/theme_family.dart';
+import 'families/material/material_tokens.dart';
 import 'families/catppuccin/catppuccin_tokens.dart';
 import 'families/dracula/dracula_tokens.dart';
 import 'families/nord/nord_tokens.dart';
@@ -12,9 +14,31 @@ class ThemeRegistry {
   factory ThemeRegistry() => _instance;
   ThemeRegistry._internal();
 
+  /// System color scheme (from dynamic_color)
+  ColorScheme? _systemLightColorScheme;
+  ColorScheme? _systemDarkColorScheme;
+
+  /// Update system color schemes
+  void updateSystemColors({
+    ColorScheme? lightColorScheme,
+    ColorScheme? darkColorScheme,
+  }) {
+    _systemLightColorScheme = lightColorScheme;
+    _systemDarkColorScheme = darkColorScheme;
+  }
+
   /// Get a semantic tokens instance for the given theme configuration
   SemanticTokens getTokens(ThemeConfig config) {
     switch (config.family) {
+      case ThemeFamily.material:
+        // Use system colors for Material themes
+        final systemScheme = config.brightness == Brightness.light
+            ? _systemLightColorScheme
+            : _systemDarkColorScheme;
+        return MaterialTokens.fromVariant(
+          config.variant.id,
+          systemColorScheme: systemScheme,
+        );
       case ThemeFamily.catppuccin:
         return CatppuccinTokens.fromVariant(config.variant.id);
       case ThemeFamily.dracula:
@@ -27,6 +51,8 @@ class ThemeRegistry {
   /// Get all variants for a specific theme family
   List<ThemeVariant> getVariantsForFamily(ThemeFamily family) {
     switch (family) {
+      case ThemeFamily.material:
+        return MaterialTokens.variants;
       case ThemeFamily.catppuccin:
         return CatppuccinTokens.variants;
       case ThemeFamily.dracula:
@@ -85,22 +111,19 @@ class ThemeRegistry {
     }
   }
 
-  /// Get default configuration for light mode (Nord Snow Storm)
+  /// Get default configuration for light mode (Material Light)
   ThemeConfig getDefaultForBrightness(Brightness brightness) {
     switch (brightness) {
       case Brightness.light:
-        // Default to Nord Snow Storm for light mode
-        return QuickAccess.nordSnowStorm;
+        // Default to Material Light
+        return QuickAccess.materialLight;
       case Brightness.dark:
-        // Default to Catppuccin Mocha for dark mode
-        return ThemeConfig(
-          family: ThemeFamily.catppuccin,
-          variant: CatppuccinTokens.variants.firstWhere((v) => v.id == 'mocha'),
-        );
+        // Default to Material AMOLED Black
+        return QuickAccess.materialAmoled;
     }
   }
 
-  /// Get the default theme configuration (Nord Snow Storm - light theme)
+  /// Get the default theme configuration (Material Light)
   ThemeConfig get defaultConfiguration =>
       getDefaultForBrightness(Brightness.light);
 
@@ -146,6 +169,21 @@ class ThemeRegistry {
 
 /// Quick access to popular theme configurations
 class QuickAccess {
+  static ThemeConfig get materialLight => ThemeConfig(
+    family: ThemeFamily.material,
+    variant: MaterialTokens.variants.firstWhere((v) => v.id == 'light'),
+  );
+
+  static ThemeConfig get materialDark => ThemeConfig(
+    family: ThemeFamily.material,
+    variant: MaterialTokens.variants.firstWhere((v) => v.id == 'dark'),
+  );
+
+  static ThemeConfig get materialAmoled => ThemeConfig(
+    family: ThemeFamily.material,
+    variant: MaterialTokens.variants.firstWhere((v) => v.id == 'amoled'),
+  );
+
   static ThemeConfig get catppuccinMocha => ThemeConfig(
     family: ThemeFamily.catppuccin,
     variant: CatppuccinTokens.variants.firstWhere((v) => v.id == 'mocha'),

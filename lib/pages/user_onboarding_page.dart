@@ -314,7 +314,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               Card(
                 // elevation: 0,
                 borderOnForeground: true,
-                color: Theme.of(context).colorScheme.onSecondary,
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -323,7 +323,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                       Text(
                         'Your Share ID',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -352,7 +352,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                       Text(
                         'Share this ID with others to sync notes securely.',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
