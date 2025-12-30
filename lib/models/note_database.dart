@@ -9,9 +9,24 @@ import 'dart:io';
 
 class NoteDatabase extends ChangeNotifier {
   static late Isar isar;
+  static bool _isInitialized = false;
+  static Future<void>? _initializationFuture;
 
   // I. INITIALIZE DATABASE
   static Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    // If initialization is already in progress, wait for it
+    if (_initializationFuture != null) {
+      await _initializationFuture;
+      return;
+    }
+
+    _initializationFuture = _doInitialize();
+    await _initializationFuture;
+  }
+
+  static Future<void> _doInitialize() async {
     final dir = await getApplicationDocumentsDirectory();
     print('📂 Isar database initialized at: ${dir.path}');
     // ADDED TodoSchema HERE
@@ -21,6 +36,8 @@ class NoteDatabase extends ChangeNotifier {
       TodoSchema,
       PendingImageUploadSchema,
     ], directory: dir.path);
+    _isInitialized = true;
+    print('✅ Isar database ready');
   }
 
   final List<Note> currentNotes = [];
@@ -100,17 +117,28 @@ class NoteDatabase extends ChangeNotifier {
   }
 
   Future<void> fetchNotes() async {
+    // Wait for database initialization if not ready
+    if (!_isInitialized) {
+      print('⏳ Waiting for database initialization...');
+      await initialize();
+    }
+
     List<Note> fetchNotes = await isar.notes.where().findAll();
     currentNotes.clear();
     currentNotes.addAll(
       fetchNotes.where((note) => !note.isDeleted && !note.isArchived),
     );
+    print('📚 Loaded ${currentNotes.length} notes from database');
     notifyListeners();
   }
 
-  Future<List<Note>> getAllNotes() async => await isar.notes.where().findAll();
+  Future<List<Note>> getAllNotes() async {
+    if (!_isInitialized) await initialize();
+    return await isar.notes.where().findAll();
+  }
 
   Future<List<Note>> getTrashNotes() async {
+    if (!_isInitialized) await initialize();
     final allNotes = await isar.notes.where().findAll();
     return allNotes
         .where((note) => note.isDeleted && !note.shouldPermanentlyDelete)
@@ -118,6 +146,7 @@ class NoteDatabase extends ChangeNotifier {
   }
 
   Future<List<Note>> getArchivedNotes() async {
+    if (!_isInitialized) await initialize();
     final allNotes = await isar.notes.where().findAll();
     return allNotes
         .where((note) => note.isArchived && !note.isDeleted)
@@ -389,6 +418,11 @@ class NoteDatabase extends ChangeNotifier {
   }
 
   Future<void> fetchHabits() async {
+    // Wait for database initialization if not ready
+    if (!_isInitialized) {
+      await initialize();
+    }
+
     List<Habit> fetchedHabits = await isar.habits.where().findAll();
     currentHabits.clear();
     currentHabits.addAll(fetchedHabits);
