@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skadoosh_app/services/device_pairing_service.dart';
+import 'package:skadoosh_app/services/key_backup_service.dart';
 import 'package:skadoosh_app/pages/notes_page.dart';
 import 'package:skadoosh_app/pages/device_management_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,7 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
   final _usernameController = TextEditingController();
   final _syncUrlController = TextEditingController();
   final _devicePairingService = DevicePairingService();
+  final _keyBackupService = KeyBackupService();
 
   bool _isLoading = false;
   String? _shareId;
@@ -113,6 +115,19 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
               duration: const Duration(seconds: 3),
             ),
           );
+
+          // Show backup reminder immediately after registration
+          // (only for NEW accounts, not restored ones)
+          Future.delayed(Duration(milliseconds: 500), () async {
+            if (mounted) {
+              // Check if this was a restored account
+              final wasRestored = await _keyBackupService
+                  .wasRestoredFromBackup();
+              if (!wasRestored) {
+                _showBackupReminderDialog();
+              }
+            }
+          });
         }
       } else {
         setState(() {
@@ -151,6 +166,293 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const DeviceManagementPage()),
+    );
+  }
+
+  void _showBackupReminderDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.security, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Expanded(child: Text('Secure Your Account')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'IMPORTANT: Back up your encryption keys!',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.orange,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Your account uses encryption keys stored on this device. Without a backup:\n'
+              '• Clearing app data = losing all notes\n'
+              '• Losing device = losing all notes\n'
+              '• Uninstalling app = losing all notes',
+              style: TextStyle(height: 1.5),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shield, color: Colors.green, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Create a backup now',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _goToNotes();
+            },
+            child: Text('Skip'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _exportBackupFromOnboarding();
+            },
+            icon: Icon(Icons.save_alt),
+            label: Text('Create Backup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportBackupFromOnboarding() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final filePath = await _keyBackupService.exportToDownloads();
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Backup Saved!'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Your account backup has been saved to:'),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    filePath,
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 11),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '⚠️ Store this file safely! You\'ll need it to recover your account.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _goToNotes();
+                },
+                child: Text('Continue to Notes'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export backup: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _restoreAccount() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _keyBackupService.importAccountBackup();
+
+      if (result.success) {
+        // Reload user info
+        await _checkExistingRegistration();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Account restored successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Show instructions for next steps
+          Future.delayed(Duration(seconds: 2), () {
+            if (mounted) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  title: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Account Restored!'),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your encryption keys have been restored.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 16),
+                      Text('Next steps to get your notes back:'),
+                      SizedBox(height: 8),
+                      _buildStep('1', 'Go to Settings → Sync'),
+                      SizedBox(height: 8),
+                      _buildStep('2', 'Click "Configure" button'),
+                      SizedBox(height: 8),
+                      _buildStep('3', 'Click "Sync Now" button'),
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info, color: Colors.blue, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Your notes are encrypted on the server. Syncing will download and decrypt them.',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _goToNotes();
+                      },
+                      child: Text('Continue'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to restore: ${result.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to restore: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildStep(String number, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14))),
+      ],
     );
   }
 
@@ -306,6 +608,57 @@ class _UserOnboardingPageState extends State<UserOnboardingPage> {
                             color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Divider with "OR"
+              Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Restore Account button
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _restoreAccount,
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: Icon(
+                    Icons.file_upload,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  label: Text(
+                    'Restore From Backup',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

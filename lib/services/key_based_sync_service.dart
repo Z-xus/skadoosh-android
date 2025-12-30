@@ -17,6 +17,7 @@ class KeyBasedSyncService {
   static const String _groupNameKey = 'sync_group_name';
   static const String _fingerprintKey = 'key_fingerprint';
   static const String _lastSyncKey = 'last_sync_time';
+  static const String _deviceIdKey = 'sync_device_id';
 
   String? _baseUrl;
   KeyPairInfo? _keyPair;
@@ -93,7 +94,15 @@ class KeyBasedSyncService {
       }
     }
 
-    _deviceId = await _generateDeviceId();
+    // Load or generate device ID
+    _deviceId = prefs.getString(_deviceIdKey);
+    if (_deviceId == null) {
+      _deviceId = await _generateDeviceId();
+      await prefs.setString(_deviceIdKey, _deviceId!);
+      print('Generated and saved new device ID: $_deviceId');
+    } else {
+      print('Loaded existing device ID: $_deviceId');
+    }
 
     print('KeyBasedSyncService initialized:');
     print('- Base URL: $_baseUrl');
@@ -203,6 +212,28 @@ class KeyBasedSyncService {
     }
 
     try {
+      // Check if we need to do initial full sync after restore
+      final prefs = await SharedPreferences.getInstance();
+      final wasRestored =
+          prefs.getBool('account_restored_from_backup') ?? false;
+      final hasNotes = _noteDatabase.currentNotes.isNotEmpty;
+      final lastSync = prefs.getString(_lastSyncKey);
+
+      // If account was restored, no local notes, and never synced -> do initial full sync
+      final needsInitialSync = wasRestored && !hasNotes && lastSync == null;
+
+      if (needsInitialSync) {
+        print(
+          '🔄 Account restored with no local notes - performing initial full sync',
+        );
+        final initialResult = await _performInitialSync();
+
+        // Clear the restored flag after successful initial sync
+        await prefs.setBool('account_restored_from_backup', false);
+
+        return initialResult;
+      }
+
       // Step 1: Push local changes
       print('\n--- Step 1: Pushing local changes ---');
       final pushResult = await _pushLocalChanges();
@@ -220,7 +251,6 @@ class KeyBasedSyncService {
       await imageSyncService.debugPrintQueueStatus();
 
       // Step 4: Update last sync time with server timestamp
-      final prefs = await SharedPreferences.getInstance();
       final timestampToStore =
           pullResult.serverTimestamp ?? DateTime.now().toIso8601String();
       await prefs.setString(_lastSyncKey, timestampToStore);
@@ -850,6 +880,147 @@ class KeyBasedSyncService {
       throw Exception(
         'Failed to pull changes: ${response.statusCode} - ${response.body}',
       );
+    }
+  }
+
+  // Perform initial full sync after restore (fetches ALL notes, not just changes)
+  Future<SyncResult> _performInitialSync() async {
+    print('\n🔄 === INITIAL FULL SYNC (POST-RESTORE) ===');
+
+    try {
+      // Use /api/sync/notes endpoint to get ALL notes in the sync group
+      final headers = await _getAuthHeaders();
+      headers.remove('Content-Type');
+
+      final url = '$_baseUrl/api/sync/notes';
+      print('📥 Fetching all notes from: $url');
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      print('Initial sync response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final notes = data['notes'] as List;
+        final serverTimestamp = data['timestamp'] as String?;
+
+        print('📦 Received ${notes.length} notes from server');
+
+        int importedNotes = 0;
+
+        for (final serverNote in notes) {
+          try {
+            final serverId = serverNote['id'];
+            final title = serverNote['title'] ?? '';
+            final content = serverNote['content'] ?? '';
+            final folderPath = serverNote['folder_path'] as String? ?? '';
+            final fileName = serverNote['file_name'] as String? ?? '';
+            final relativePath = serverNote['relative_path'] as String? ?? '';
+
+            print('📝 Importing note: $title');
+
+            // Determine file paths
+            String effectiveFileName;
+            String effectiveRelativePath;
+            String effectiveFolderPath;
+
+            if (fileName.isNotEmpty && relativePath.isNotEmpty) {
+              effectiveFileName = fileName;
+              effectiveRelativePath = relativePath;
+              effectiveFolderPath = folderPath;
+            } else {
+              // Generate paths for legacy notes
+              effectiveFileName = _storageService.sanitizeFilename(title);
+              effectiveRelativePath = effectiveFileName;
+              effectiveFolderPath = '';
+            }
+
+            // Check if note already exists
+            final existingNote = _noteDatabase.currentNotes
+                .where(
+                  (n) =>
+                      n.serverId == serverId ||
+                      n.relativePath == effectiveRelativePath,
+                )
+                .firstOrNull;
+
+            if (existingNote != null) {
+              print('⏭️  Note already exists locally, skipping: $title');
+              continue;
+            }
+
+            // Create file
+            await _storageService.writeNote(effectiveRelativePath, content);
+
+            // Create note in database
+            final noteId = await _noteDatabase.addNoteWithId(
+              title,
+              body: '', // Content is in file
+              fileName: effectiveFileName,
+              relativePath: effectiveRelativePath,
+              needsSync: false,
+            );
+
+            // Update folder path if needed
+            if (effectiveFolderPath.isNotEmpty) {
+              final createdNote = await NoteDatabase.isar.notes.get(noteId);
+              if (createdNote != null) {
+                createdNote.folderPath = effectiveFolderPath;
+                await NoteDatabase.isar.writeTxn(() async {
+                  await NoteDatabase.isar.notes.put(createdNote);
+                });
+              }
+            }
+
+            // Update sync status
+            await _noteDatabase.updateSyncStatus(
+              noteId,
+              serverId: serverId,
+              lastSyncedAt: DateTime.now(),
+              needsSync: false,
+            );
+
+            // Update shadow cache with server content
+            final note = await NoteDatabase.isar.notes.get(noteId);
+            if (note != null) {
+              await _updateShadowCache(note, content);
+            }
+
+            print(
+              '✅ Imported note: $title (ID: $noteId, server ID: $serverId)',
+            );
+            importedNotes++;
+          } catch (e) {
+            print('❌ Error importing note: $e');
+            // Continue with next note
+          }
+        }
+
+        // Update last sync timestamp
+        final prefs = await SharedPreferences.getInstance();
+        final timestampToStore =
+            serverTimestamp ?? DateTime.now().toIso8601String();
+        await prefs.setString(_lastSyncKey, timestampToStore);
+
+        print('\n✅ Initial sync complete!');
+        print('   - Imported: $importedNotes notes');
+        print('   - Total local notes: ${_noteDatabase.currentNotes.length}');
+        print('=== INITIAL SYNC COMPLETE ===\n');
+
+        return SyncResult(
+          success: true,
+          pushedNotes: 0,
+          pulledNotes: importedNotes,
+          conflicts: [],
+        );
+      } else {
+        throw Exception(
+          'Failed to fetch notes: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('❌ Initial sync failed: $e');
+      return SyncResult(success: false, error: e.toString());
     }
   }
 

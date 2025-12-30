@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skadoosh_app/services/device_pairing_service.dart';
+import 'package:skadoosh_app/services/key_backup_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DeviceManagementPage extends StatefulWidget {
@@ -12,6 +13,7 @@ class DeviceManagementPage extends StatefulWidget {
 
 class _DeviceManagementPageState extends State<DeviceManagementPage> {
   final _devicePairingService = DevicePairingService();
+  final _keyBackupService = KeyBackupService();
   final _shareIdController = TextEditingController();
 
   List<PairedDevice> _pairedDevices = [];
@@ -19,6 +21,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   String? _currentUserShareId;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _hasBackup = false;
+  DateTime? _lastBackupDate;
 
   @override
   void initState() {
@@ -36,9 +40,18 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       await _refreshData();
     }
 
+    // Check backup status
+    final hasBackup = await _keyBackupService.hasCreatedBackup();
+    final lastBackup = await _keyBackupService.getLastBackupDate();
+
     setState(() {
       _currentUserShareId = shareId;
+      _hasBackup = hasBackup;
+      _lastBackupDate = lastBackup;
     });
+
+    // Don't show automatic reminder - user can see the warning in the UI
+    // and can click "Create Backup" button when ready
   }
 
   Future<void> _refreshData() async {
@@ -154,12 +167,184 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
+  Future<void> _exportAccountBackup() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final filePath = await _keyBackupService.exportToDownloads();
+      setState(() {
+        _hasBackup = true;
+        _lastBackupDate = DateTime.now();
+      });
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Backup Saved!'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Your account backup has been saved to:'),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    filePath,
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '⚠️ IMPORTANT: Store this file safely!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'This file contains your encryption keys. Keep it secure and backed up. You\'ll need it to recover your account if you:\n'
+                  '• Clear app data\n'
+                  '• Uninstall the app\n'
+                  '• Switch to a new device',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Got it!'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('Failed to export backup: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _importAccountBackup() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _keyBackupService.importAccountBackup();
+
+      if (result.success) {
+        _showSuccess('Account restored successfully!');
+        // Reload the page to show restored data
+        await _loadUserInfo();
+      } else {
+        _showError('Failed to restore account: ${result.error}');
+      }
+    } catch (e) {
+      _showError('Failed to import backup: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showBackupReminderDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 12),
+            Expanded(child: Text('Backup Your Account')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your account is NOT backed up!',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'If you clear app data or lose your device, you will PERMANENTLY lose access to all your notes.',
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shield, color: Colors.orange, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Create a backup now to secure your data',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Remind Me Later'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _exportAccountBackup();
+            },
+            icon: Icon(Icons.save_alt),
+            label: Text('Create Backup'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getFriendlyDeviceName(String deviceName) {
     if (deviceName.toLowerCase().contains('sdk built for') ||
         deviceName.toLowerCase().contains('google sdk')) {
       return 'Android';
     }
     return deviceName;
+  }
+
+  String _formatBackupDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays > 0) {
+      return '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes} minute${diff.inMinutes == 1 ? '' : 's'} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   @override
@@ -272,6 +457,130 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                                         ).colorScheme.onSurface,
                                       ),
                                 ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Account Backup Section
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _hasBackup
+                          ? colorScheme.surfaceContainerHigh
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _hasBackup
+                            ? colorScheme.outline
+                            : Colors.orange.withOpacity(0.5),
+                        width: _hasBackup ? 1 : 2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              _hasBackup ? Icons.shield : Icons.warning_amber,
+                              color: _hasBackup ? Colors.green : Colors.orange,
+                              size: 24,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Account Backup',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.onSurface,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ),
+                            if (_hasBackup)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.green.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  'BACKED UP',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _hasBackup
+                              ? 'Your encryption keys are safely backed up. Keep this file secure!'
+                              : '⚠️ Your account is NOT backed up! If you clear app data or lose your device, you will lose all your notes forever.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                        if (_lastBackupDate != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Last backup: ${_formatBackupDate(_lastBackupDate!)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant.withOpacity(
+                                0.7,
+                              ),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: _isLoading
+                                    ? null
+                                    : _exportAccountBackup,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: colorScheme.primary,
+                                  foregroundColor: colorScheme.onPrimary,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                icon: Icon(Icons.save_alt, size: 20),
+                                label: Text(
+                                  _hasBackup ? 'Export Again' : 'Create Backup',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoading
+                                    ? null
+                                    : _importAccountBackup,
+                                style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  side: BorderSide(color: colorScheme.outline),
+                                ),
+                                icon: Icon(Icons.file_upload, size: 20),
+                                label: Text('Restore'),
                               ),
                             ),
                           ],
