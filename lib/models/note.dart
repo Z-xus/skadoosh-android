@@ -52,6 +52,15 @@ class Note {
   List<String> localImagePaths = []; // Local cached image paths
   bool hasImages = false;
 
+  // NEW: Bidirectional mapping between R2 URLs and local paths (stored as JSON)
+  // This allows offline fallback when R2 URL is unavailable
+  String?
+  imagePathMapJson; // Serialized Map<String, String> where key=R2 URL, value=local path
+
+  // In-memory cache of the deserialized map
+  @ignore
+  Map<String, String>? _imagePathMapCache;
+
   // Helper methods for image sync status
   bool get hasPendingImageUploads {
     return localImagePaths.isNotEmpty &&
@@ -73,6 +82,67 @@ class Note {
 
   List<String> get localOnlyImagePaths {
     return localImagePaths.where((path) => !path.startsWith('http')).toList();
+  }
+
+  // NEW: Image path mapping helpers
+  Map<String, String> getImagePathMap() {
+    if (_imagePathMapCache != null) return _imagePathMapCache!;
+
+    // Deserialize from JSON if available
+    if (imagePathMapJson != null && imagePathMapJson!.isNotEmpty) {
+      try {
+        final decoded = json.decode(imagePathMapJson!) as Map<String, dynamic>;
+        _imagePathMapCache = decoded.map(
+          (key, value) => MapEntry(key, value.toString()),
+        );
+        return _imagePathMapCache!;
+      } catch (e) {
+        print('Error deserializing imagePathMap: $e');
+      }
+    }
+
+    // Return empty map as fallback
+    _imagePathMapCache = {};
+    return _imagePathMapCache!;
+  }
+
+  void setImagePathMap(Map<String, String> value) {
+    _imagePathMapCache = value;
+    // Serialize to JSON for Isar storage
+    try {
+      imagePathMapJson = json.encode(value);
+    } catch (e) {
+      print('Error serializing imagePathMap: $e');
+      imagePathMapJson = null;
+    }
+  }
+
+  // Add a mapping between R2 URL and local path
+  void addImageMapping(String r2Url, String localPath) {
+    final map = getImagePathMap();
+    map[r2Url] = localPath;
+    setImagePathMap(map);
+  }
+
+  // Get local path for an R2 URL (returns null if not found)
+  String? getLocalPathForUrl(String r2Url) {
+    return getImagePathMap()[r2Url];
+  }
+
+  // Get R2 URL for a local path (returns null if not found)
+  String? getUrlForLocalPath(String localPath) {
+    final map = getImagePathMap();
+    for (var entry in map.entries) {
+      if (entry.value == localPath) return entry.key;
+    }
+    return null;
+  }
+
+  // Remove a mapping
+  void removeImageMapping(String r2Url) {
+    final map = getImagePathMap();
+    map.remove(r2Url);
+    setImagePathMap(map);
   }
 
   // Helper method to check if note should be permanently deleted (30 days)

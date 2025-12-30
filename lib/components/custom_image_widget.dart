@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skadoosh_app/models/note.dart';
 
 class CustomImageWidget extends StatelessWidget {
   final String imageUrl;
@@ -8,6 +9,7 @@ class CustomImageWidget extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final String? alignment;
+  final Note? note; // NEW: Optional note for accessing image path map
 
   const CustomImageWidget({
     super.key,
@@ -16,6 +18,7 @@ class CustomImageWidget extends StatelessWidget {
     this.height,
     this.fit = BoxFit.contain,
     this.alignment,
+    this.note, // NEW: Pass note for offline fallback
   });
 
   bool get isNetworkUrl =>
@@ -42,7 +45,7 @@ class CustomImageWidget extends StatelessWidget {
   Widget _buildImageWidget() {
     try {
       if (isNetworkUrl) {
-        // Network image (R2 URLs)
+        // Network image (R2 URLs) with offline fallback
         return CachedNetworkImage(
           imageUrl: imageUrl,
           fit: fit,
@@ -51,78 +54,63 @@ class CustomImageWidget extends StatelessWidget {
             color: Colors.grey[200],
             child: const Center(child: CircularProgressIndicator()),
           ),
-          errorWidget: (context, url, error) => Container(
-            height: 200,
-            color: Colors.grey[200],
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text(
-                  'Failed to load image',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
+          errorWidget: (context, url, error) {
+            // NEW: Try offline fallback when network image fails
+            if (note != null) {
+              final localPath = note!.getLocalPathForUrl(imageUrl);
+              if (localPath != null) {
+                final localFile = File(localPath);
+                if (localFile.existsSync()) {
+                  print(
+                    '🔄 Network image failed, using local fallback: $localPath',
+                  );
+                  return Image.file(
+                    localFile,
+                    fit: fit,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildErrorWidget('Local fallback failed'),
+                  );
+                }
+              }
+            }
+
+            // No fallback available
+            return _buildErrorWidget('Failed to load image');
+          },
         );
       } else if (isLocalFile) {
         // Local file image
         return Image.file(
           File(imageUrl),
           fit: fit,
-          errorBuilder: (context, error, stackTrace) => Container(
-            height: 200,
-            color: Colors.grey[200],
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text(
-                  'Local image not found',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
+          errorBuilder: (context, error, stackTrace) =>
+              _buildErrorWidget('Local image not found'),
         );
       } else {
         // Fallback for unknown format
-        return Container(
-          height: 200,
-          color: Colors.grey[200],
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.image, size: 48, color: Colors.grey),
-              SizedBox(height: 8),
-              Text(
-                'Unknown image format',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        );
+        return _buildErrorWidget('Unknown image format');
       }
     } catch (e) {
-      return Container(
-        height: 200,
-        color: Colors.grey[200],
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 48, color: Colors.red),
-            const SizedBox(height: 8),
-            Text(
-              'Error: $e',
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
+      return _buildErrorWidget('Error: $e');
     }
+  }
+
+  Widget _buildErrorWidget(String message) {
+    return Container(
+      height: 200,
+      color: Colors.grey[200],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 }

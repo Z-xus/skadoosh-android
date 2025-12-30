@@ -77,88 +77,118 @@ const NoteSchema = CollectionSchema(
       name: r'hasImages',
       type: IsarType.bool,
     ),
-    r'imageUrls': PropertySchema(
+    r'hasPendingImageUploads': PropertySchema(
       id: 12,
+      name: r'hasPendingImageUploads',
+      type: IsarType.bool,
+    ),
+    r'hasUnSyncedImages': PropertySchema(
+      id: 13,
+      name: r'hasUnSyncedImages',
+      type: IsarType.bool,
+    ),
+    r'imagePathMapJson': PropertySchema(
+      id: 14,
+      name: r'imagePathMapJson',
+      type: IsarType.string,
+    ),
+    r'imageUrls': PropertySchema(
+      id: 15,
       name: r'imageUrls',
       type: IsarType.stringList,
     ),
     r'isActive': PropertySchema(
-      id: 13,
+      id: 16,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'isArchived': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'isArchived',
       type: IsarType.bool,
     ),
     r'isDeleted': PropertySchema(
-      id: 15,
+      id: 18,
       name: r'isDeleted',
       type: IsarType.bool,
     ),
     r'isDirty': PropertySchema(
-      id: 16,
+      id: 19,
       name: r'isDirty',
       type: IsarType.bool,
     ),
     r'isInRoot': PropertySchema(
-      id: 17,
+      id: 20,
       name: r'isInRoot',
       type: IsarType.bool,
     ),
     r'isInTrash': PropertySchema(
-      id: 18,
+      id: 21,
       name: r'isInTrash',
       type: IsarType.bool,
     ),
     r'lastSyncedAt': PropertySchema(
-      id: 19,
+      id: 22,
       name: r'lastSyncedAt',
       type: IsarType.dateTime,
     ),
     r'lastSyncedHash': PropertySchema(
-      id: 20,
+      id: 23,
       name: r'lastSyncedHash',
       type: IsarType.string,
     ),
     r'localImagePaths': PropertySchema(
-      id: 21,
+      id: 24,
       name: r'localImagePaths',
       type: IsarType.stringList,
     ),
+    r'localOnlyImagePaths': PropertySchema(
+      id: 25,
+      name: r'localOnlyImagePaths',
+      type: IsarType.stringList,
+    ),
     r'needsSync': PropertySchema(
-      id: 22,
+      id: 26,
       name: r'needsSync',
       type: IsarType.bool,
     ),
+    r'pendingImageCount': PropertySchema(
+      id: 27,
+      name: r'pendingImageCount',
+      type: IsarType.long,
+    ),
     r'relativePath': PropertySchema(
-      id: 23,
+      id: 28,
       name: r'relativePath',
       type: IsarType.string,
     ),
     r'serverId': PropertySchema(
-      id: 24,
+      id: 29,
       name: r'serverId',
       type: IsarType.string,
     ),
     r'shadowContentZLib': PropertySchema(
-      id: 25,
+      id: 30,
       name: r'shadowContentZLib',
       type: IsarType.longList,
     ),
     r'shouldPermanentlyDelete': PropertySchema(
-      id: 26,
+      id: 31,
       name: r'shouldPermanentlyDelete',
       type: IsarType.bool,
     ),
+    r'syncedImageUrls': PropertySchema(
+      id: 32,
+      name: r'syncedImageUrls',
+      type: IsarType.stringList,
+    ),
     r'title': PropertySchema(
-      id: 27,
+      id: 33,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 28,
+      id: 34,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -228,6 +258,12 @@ int _noteEstimateSize(
     }
   }
   bytesCount += 3 + object.fullPath.length * 3;
+  {
+    final value = object.imagePathMapJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.imageUrls.length * 3;
   {
     for (var i = 0; i < object.imageUrls.length; i++) {
@@ -248,6 +284,13 @@ int _noteEstimateSize(
       bytesCount += value.length * 3;
     }
   }
+  bytesCount += 3 + object.localOnlyImagePaths.length * 3;
+  {
+    for (var i = 0; i < object.localOnlyImagePaths.length; i++) {
+      final value = object.localOnlyImagePaths[i];
+      bytesCount += value.length * 3;
+    }
+  }
   {
     final value = object.relativePath;
     if (value != null) {
@@ -264,6 +307,13 @@ int _noteEstimateSize(
     final value = object.shadowContentZLib;
     if (value != null) {
       bytesCount += 3 + value.length * 8;
+    }
+  }
+  bytesCount += 3 + object.syncedImageUrls.length * 3;
+  {
+    for (var i = 0; i < object.syncedImageUrls.length; i++) {
+      final value = object.syncedImageUrls[i];
+      bytesCount += value.length * 3;
     }
   }
   bytesCount += 3 + object.title.length * 3;
@@ -288,23 +338,29 @@ void _noteSerialize(
   writer.writeString(offsets[9], object.folderPath);
   writer.writeString(offsets[10], object.fullPath);
   writer.writeBool(offsets[11], object.hasImages);
-  writer.writeStringList(offsets[12], object.imageUrls);
-  writer.writeBool(offsets[13], object.isActive);
-  writer.writeBool(offsets[14], object.isArchived);
-  writer.writeBool(offsets[15], object.isDeleted);
-  writer.writeBool(offsets[16], object.isDirty);
-  writer.writeBool(offsets[17], object.isInRoot);
-  writer.writeBool(offsets[18], object.isInTrash);
-  writer.writeDateTime(offsets[19], object.lastSyncedAt);
-  writer.writeString(offsets[20], object.lastSyncedHash);
-  writer.writeStringList(offsets[21], object.localImagePaths);
-  writer.writeBool(offsets[22], object.needsSync);
-  writer.writeString(offsets[23], object.relativePath);
-  writer.writeString(offsets[24], object.serverId);
-  writer.writeLongList(offsets[25], object.shadowContentZLib);
-  writer.writeBool(offsets[26], object.shouldPermanentlyDelete);
-  writer.writeString(offsets[27], object.title);
-  writer.writeDateTime(offsets[28], object.updatedAt);
+  writer.writeBool(offsets[12], object.hasPendingImageUploads);
+  writer.writeBool(offsets[13], object.hasUnSyncedImages);
+  writer.writeString(offsets[14], object.imagePathMapJson);
+  writer.writeStringList(offsets[15], object.imageUrls);
+  writer.writeBool(offsets[16], object.isActive);
+  writer.writeBool(offsets[17], object.isArchived);
+  writer.writeBool(offsets[18], object.isDeleted);
+  writer.writeBool(offsets[19], object.isDirty);
+  writer.writeBool(offsets[20], object.isInRoot);
+  writer.writeBool(offsets[21], object.isInTrash);
+  writer.writeDateTime(offsets[22], object.lastSyncedAt);
+  writer.writeString(offsets[23], object.lastSyncedHash);
+  writer.writeStringList(offsets[24], object.localImagePaths);
+  writer.writeStringList(offsets[25], object.localOnlyImagePaths);
+  writer.writeBool(offsets[26], object.needsSync);
+  writer.writeLong(offsets[27], object.pendingImageCount);
+  writer.writeString(offsets[28], object.relativePath);
+  writer.writeString(offsets[29], object.serverId);
+  writer.writeLongList(offsets[30], object.shadowContentZLib);
+  writer.writeBool(offsets[31], object.shouldPermanentlyDelete);
+  writer.writeStringList(offsets[32], object.syncedImageUrls);
+  writer.writeString(offsets[33], object.title);
+  writer.writeDateTime(offsets[34], object.updatedAt);
 }
 
 Note _noteDeserialize(
@@ -323,19 +379,20 @@ Note _noteDeserialize(
   object.folderPath = reader.readStringOrNull(offsets[9]);
   object.hasImages = reader.readBool(offsets[11]);
   object.id = id;
-  object.imageUrls = reader.readStringList(offsets[12]) ?? [];
-  object.isArchived = reader.readBool(offsets[14]);
-  object.isDeleted = reader.readBool(offsets[15]);
-  object.isDirty = reader.readBool(offsets[16]);
-  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[19]);
-  object.lastSyncedHash = reader.readStringOrNull(offsets[20]);
-  object.localImagePaths = reader.readStringList(offsets[21]) ?? [];
-  object.needsSync = reader.readBool(offsets[22]);
-  object.relativePath = reader.readStringOrNull(offsets[23]);
-  object.serverId = reader.readStringOrNull(offsets[24]);
-  object.shadowContentZLib = reader.readLongList(offsets[25]);
-  object.title = reader.readString(offsets[27]);
-  object.updatedAt = reader.readDateTimeOrNull(offsets[28]);
+  object.imagePathMapJson = reader.readStringOrNull(offsets[14]);
+  object.imageUrls = reader.readStringList(offsets[15]) ?? [];
+  object.isArchived = reader.readBool(offsets[17]);
+  object.isDeleted = reader.readBool(offsets[18]);
+  object.isDirty = reader.readBool(offsets[19]);
+  object.lastSyncedAt = reader.readDateTimeOrNull(offsets[22]);
+  object.lastSyncedHash = reader.readStringOrNull(offsets[23]);
+  object.localImagePaths = reader.readStringList(offsets[24]) ?? [];
+  object.needsSync = reader.readBool(offsets[26]);
+  object.relativePath = reader.readStringOrNull(offsets[28]);
+  object.serverId = reader.readStringOrNull(offsets[29]);
+  object.shadowContentZLib = reader.readLongList(offsets[30]);
+  object.title = reader.readString(offsets[33]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[34]);
   return object;
 }
 
@@ -371,13 +428,13 @@ P _noteDeserializeProp<P>(
     case 11:
       return (reader.readBool(offset)) as P;
     case 12:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readBool(offset)) as P;
     case 13:
       return (reader.readBool(offset)) as P;
     case 14:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 16:
       return (reader.readBool(offset)) as P;
     case 17:
@@ -385,24 +442,36 @@ P _noteDeserializeProp<P>(
     case 18:
       return (reader.readBool(offset)) as P;
     case 19:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 20:
-      return (reader.readStringOrNull(offset)) as P;
-    case 21:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 22:
       return (reader.readBool(offset)) as P;
+    case 20:
+      return (reader.readBool(offset)) as P;
+    case 21:
+      return (reader.readBool(offset)) as P;
+    case 22:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 23:
       return (reader.readStringOrNull(offset)) as P;
     case 24:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 25:
-      return (reader.readLongList(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 26:
       return (reader.readBool(offset)) as P;
     case 27:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 28:
+      return (reader.readStringOrNull(offset)) as P;
+    case 29:
+      return (reader.readStringOrNull(offset)) as P;
+    case 30:
+      return (reader.readLongList(offset)) as P;
+    case 31:
+      return (reader.readBool(offset)) as P;
+    case 32:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 33:
+      return (reader.readString(offset)) as P;
+    case 34:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1911,6 +1980,26 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> hasPendingImageUploadsEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hasPendingImageUploads',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> hasUnSyncedImagesEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hasUnSyncedImages',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1959,6 +2048,152 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'imagePathMapJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'imagePathMapJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'imagePathMapJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'imagePathMapJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'imagePathMapJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imagePathMapJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> imagePathMapJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'imagePathMapJson',
+        value: '',
       ));
     });
   }
@@ -2668,11 +2903,290 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'localOnlyImagePaths',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementContains(String value,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'localOnlyImagePaths',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'localOnlyImagePaths',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'localOnlyImagePaths',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'localOnlyImagePaths',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> localOnlyImagePathsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      localOnlyImagePathsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'localOnlyImagePaths',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> needsSyncEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'needsSync',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> pendingImageCountEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pendingImageCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> pendingImageCountGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'pendingImageCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> pendingImageCountLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'pendingImageCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> pendingImageCountBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'pendingImageCount',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -3138,6 +3652,227 @@ extension NoteQueryFilter on QueryBuilder<Note, Note, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'syncedImageUrls',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementContains(String value,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'syncedImageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsElementMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'syncedImageUrls',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'syncedImageUrls',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'syncedImageUrls',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition>
+      syncedImageUrlsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterFilterCondition> syncedImageUrlsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'syncedImageUrls',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterFilterCondition> titleEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -3485,6 +4220,42 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> sortByHasPendingImageUploads() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasPendingImageUploads', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByHasPendingImageUploadsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasPendingImageUploads', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByHasUnSyncedImages() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasUnSyncedImages', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByHasUnSyncedImagesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasUnSyncedImages', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByImagePathMapJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imagePathMapJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByImagePathMapJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imagePathMapJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> sortByIsActive() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isActive', Sort.asc);
@@ -3590,6 +4361,18 @@ extension NoteQuerySortBy on QueryBuilder<Note, Note, QSortBy> {
   QueryBuilder<Note, Note, QAfterSortBy> sortByNeedsSyncDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByPendingImageCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingImageCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> sortByPendingImageCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingImageCount', Sort.desc);
     });
   }
 
@@ -3799,6 +4582,30 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Note, Note, QAfterSortBy> thenByHasPendingImageUploads() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasPendingImageUploads', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByHasPendingImageUploadsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasPendingImageUploads', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByHasUnSyncedImages() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasUnSyncedImages', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByHasUnSyncedImagesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hasUnSyncedImages', Sort.desc);
+    });
+  }
+
   QueryBuilder<Note, Note, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -3808,6 +4615,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByImagePathMapJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imagePathMapJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByImagePathMapJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imagePathMapJson', Sort.desc);
     });
   }
 
@@ -3916,6 +4735,18 @@ extension NoteQuerySortThenBy on QueryBuilder<Note, Note, QSortThenBy> {
   QueryBuilder<Note, Note, QAfterSortBy> thenByNeedsSyncDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'needsSync', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByPendingImageCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingImageCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterSortBy> thenByPendingImageCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pendingImageCount', Sort.desc);
     });
   }
 
@@ -4063,6 +4894,26 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByHasPendingImageUploads() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hasPendingImageUploads');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByHasUnSyncedImages() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hasUnSyncedImages');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByImagePathMapJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'imagePathMapJson',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByImageUrls() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'imageUrls');
@@ -4125,9 +4976,21 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
     });
   }
 
+  QueryBuilder<Note, Note, QDistinct> distinctByLocalOnlyImagePaths() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'localOnlyImagePaths');
+    });
+  }
+
   QueryBuilder<Note, Note, QDistinct> distinctByNeedsSync() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'needsSync');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctByPendingImageCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pendingImageCount');
     });
   }
 
@@ -4154,6 +5017,12 @@ extension NoteQueryWhereDistinct on QueryBuilder<Note, Note, QDistinct> {
   QueryBuilder<Note, Note, QDistinct> distinctByShouldPermanentlyDelete() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'shouldPermanentlyDelete');
+    });
+  }
+
+  QueryBuilder<Note, Note, QDistinct> distinctBySyncedImageUrls() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'syncedImageUrls');
     });
   }
 
@@ -4250,6 +5119,24 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, bool, QQueryOperations> hasPendingImageUploadsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hasPendingImageUploads');
+    });
+  }
+
+  QueryBuilder<Note, bool, QQueryOperations> hasUnSyncedImagesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hasUnSyncedImages');
+    });
+  }
+
+  QueryBuilder<Note, String?, QQueryOperations> imagePathMapJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'imagePathMapJson');
+    });
+  }
+
   QueryBuilder<Note, List<String>, QQueryOperations> imageUrlsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'imageUrls');
@@ -4310,9 +5197,22 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Note, List<String>, QQueryOperations>
+      localOnlyImagePathsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'localOnlyImagePaths');
+    });
+  }
+
   QueryBuilder<Note, bool, QQueryOperations> needsSyncProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'needsSync');
+    });
+  }
+
+  QueryBuilder<Note, int, QQueryOperations> pendingImageCountProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pendingImageCount');
     });
   }
 
@@ -4337,6 +5237,12 @@ extension NoteQueryProperty on QueryBuilder<Note, Note, QQueryProperty> {
   QueryBuilder<Note, bool, QQueryOperations> shouldPermanentlyDeleteProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'shouldPermanentlyDelete');
+    });
+  }
+
+  QueryBuilder<Note, List<String>, QQueryOperations> syncedImageUrlsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'syncedImageUrls');
     });
   }
 

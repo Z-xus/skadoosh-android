@@ -762,16 +762,21 @@ class KeyBasedSyncService {
       await imageSyncService.initialize();
 
       // First, scan all notes for any local images that might not be queued yet
+      // autoProcess=false to prevent background processing during sync
       print('🔍 Scanning all notes for local images...');
       for (final note in _noteDatabase.currentNotes) {
-        await imageSyncService.scanAndQueueLocalImagesInNote(note);
+        await imageSyncService.scanAndQueueLocalImagesInNote(
+          note,
+          autoProcess: false,
+        );
       }
 
       // Update server IDs for pending uploads
       await imageSyncService.updateServerIdsForPendingUploads();
 
-      // Process the upload queue
-      final processedCount = await imageSyncService.processUploadQueue();
+      // Process ALL uploads and wait for completion
+      // This ensures all images are uploaded before sync completes
+      final processedCount = await imageSyncService.processAllUploads();
 
       print('📸 Processed $processedCount image uploads after sync');
 

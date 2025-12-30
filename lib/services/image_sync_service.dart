@@ -35,6 +35,7 @@ class ImageSyncService {
     String? originalFilename,
     int? fileSize,
     String? contentType,
+    bool autoProcess = true, // NEW: Control auto-processing
   }) async {
     if (!_isInitialized) await initialize();
 
@@ -67,8 +68,8 @@ class ImageSyncService {
 
     print('Queued image for upload: $localImagePath (noteId: $noteId)');
 
-    // Try to process immediately if we have internet and the note is synced
-    if (_imageService.isConfigured && serverId != null) {
+    // Only auto-process if enabled (disabled during sync to avoid conflicts)
+    if (autoProcess && _imageService.isConfigured && serverId != null) {
       _processQueueInBackground();
     }
   }
@@ -87,12 +88,13 @@ class ImageSyncService {
 
     try {
       print('🚀 Starting upload queue processing...');
-      // Get all pending uploads
+      // Get all pending uploads - sorted by creation time to maintain order
       final pendingUploads = await NoteDatabase.isar.pendingImageUploads
           .filter()
           .statusEqualTo(UploadStatus.pending)
           .or()
           .statusEqualTo(UploadStatus.failed)
+          .sortByCreatedAt() // NEW: Process images in order they were added
           .findAll();
 
       print('Processing ${pendingUploads.length} pending image uploads');
@@ -147,6 +149,57 @@ class ImageSyncService {
     } finally {
       _isProcessing = false;
     }
+  }
+
+  // NEW: Process ALL uploads until queue is empty (for sync)
+  // This ensures all images are uploaded before sync completes
+  Future<int> processAllUploads() async {
+    if (!_isInitialized) await initialize();
+
+    int totalProcessed = 0;
+    int maxIterations = 10; // Safety limit to prevent infinite loops
+    int iteration = 0;
+
+    print('🔄 Processing all uploads until queue is empty...');
+
+    while (iteration < maxIterations) {
+      iteration++;
+
+      // Get pending count
+      final pendingUploads = await NoteDatabase.isar.pendingImageUploads
+          .filter()
+          .statusEqualTo(UploadStatus.pending)
+          .or()
+          .statusEqualTo(UploadStatus.failed)
+          .findAll();
+
+      // Filter retryable uploads
+      final retryableUploads = pendingUploads
+          .where((u) => u.retryCount < 3)
+          .toList();
+      final pendingCount = retryableUploads.length;
+
+      if (pendingCount == 0) {
+        print('✅ All uploads complete (iteration $iteration)');
+        break;
+      }
+
+      print('🔄 Iteration $iteration: $pendingCount uploads remaining');
+
+      // Process this batch
+      final processed = await processUploadQueue(force: true);
+      totalProcessed += processed;
+
+      // Small delay to allow file system operations to complete
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (iteration >= maxIterations) {
+      print('⚠️ Reached max iterations, some uploads may remain');
+    }
+
+    print('📊 Total uploads processed: $totalProcessed');
+    return totalProcessed;
   }
 
   // Process a single upload
@@ -270,11 +323,17 @@ class ImageSyncService {
         note.updatedAt = DateTime.now();
         note.needsSync = true; // Mark for sync to update server
 
+        // NEW: Add bidirectional mapping between R2 URL and local path
+        note.addImageMapping(upload.r2ImageUrl!, upload.localImagePath);
+
         await NoteDatabase.isar.writeTxn(() async {
           await NoteDatabase.isar.notes.put(note);
         });
 
         print('✅ Updated note content with R2 URL: ${upload.r2ImageUrl}');
+        print(
+          '🗺️ Added image path mapping: ${upload.r2ImageUrl} <-> ${upload.localImagePath}',
+        );
       }
     } catch (e) {
       print('❌ Error updating note with R2 URL: $e');
@@ -353,7 +412,10 @@ class ImageSyncService {
   }
 
   // Scan note content and queue any local images that aren't already queued
-  Future<void> scanAndQueueLocalImagesInNote(Note note) async {
+  Future<void> scanAndQueueLocalImagesInNote(
+    Note note, {
+    bool autoProcess = false,
+  }) async {
     if (!_isInitialized) await initialize();
 
     try {
@@ -388,8 +450,9 @@ class ImageSyncService {
       print('   Content preview: $previewContent');
 
       // Find all local image references
+      // Updated regex to handle edge cases better
       final localImageRegex = RegExp(
-        r'!\[.*?\]\((file://.*?|/.*?\.(?:jpg|jpeg|png|gif|webp))\)',
+        r'!\[.*?\]\((file://[^\)]+|/[^\)]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP))\)',
       );
       final matches = localImageRegex.allMatches(content);
       print('   Found ${matches.length} image references in content');
@@ -447,6 +510,7 @@ class ImageSyncService {
                 originalFilename: fileName,
                 fileSize: fileSize,
                 contentType: contentType,
+                autoProcess: autoProcess, // Pass through the parameter
               );
 
               print('📸 Queued previously missed image: $cleanPath');

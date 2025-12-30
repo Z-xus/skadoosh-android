@@ -563,36 +563,48 @@ class _EditNotePageState extends State<EditNotePage> {
 
       // Continue with the rest of the logic...
 
-      // Get the node and path for insertion
+      // Insert image as proper markdown text instead of custom node
+      // This ensures proper newlines and markdown formatting
       final node = _editorState.getNodeAtPath(selection.end.path);
       if (node == null) return;
 
       final transaction = _editorState.transaction;
 
-      // Create image node with proper URL
-      final imageNode = Node(
-        type: 'image',
-        attributes: {
-          'url': imageUrl,
-          'align': 'center',
-          'width': 300.0,
-          'height': 200.0,
-        },
-      );
+      // Create markdown image syntax with proper newlines
+      final imageMarkdown = '![]($imageUrl)';
 
-      // If current node is empty paragraph, replace it
-      if (node.type == 'paragraph' && (node.delta?.isEmpty ?? false)) {
+      // Create three new paragraph nodes:
+      // 1. Empty line before image
+      // 2. Image paragraph
+      // 3. Empty line after image
+      final emptyBefore = paragraphNode();
+      final imageParagraph = paragraphNode(text: imageMarkdown);
+      final emptyAfter = paragraphNode();
+
+      // If current node is empty paragraph, insert image here
+      if (node.type == 'paragraph' && (node.delta?.isEmpty ?? true)) {
+        final insertPath = node.path;
         transaction
-          ..insertNode(node.path, imageNode)
-          ..deleteNode(node);
+          ..insertNode(insertPath, imageParagraph)
+          ..insertNode(insertPath.next, emptyAfter)
+          ..deleteNode(node); // Remove the empty node we replaced
       } else {
-        // Insert after current node
-        transaction.insertNode(node.path.next, imageNode);
+        // Insert after current node with proper spacing
+        final nextPath = node.path.next;
+        transaction
+          ..insertNode(nextPath, emptyBefore)
+          ..insertNode(nextPath.next, imageParagraph)
+          ..insertNode(nextPath.next.next, emptyAfter);
       }
 
-      // Set cursor after the image
+      // Set cursor to the empty line after image
+      final cursorPath =
+          node.type == 'paragraph' && (node.delta?.isEmpty ?? true)
+          ? node.path.next
+          : node.path.next.next.next;
+
       transaction.afterSelection = Selection.collapsed(
-        Position(path: node.path.next, offset: 0),
+        Position(path: cursorPath, offset: 0),
       );
 
       await _editorState.apply(transaction);
