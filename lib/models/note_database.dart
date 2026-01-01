@@ -138,6 +138,51 @@ class NoteDatabase extends ChangeNotifier {
     return await isar.notes.where().findAll();
   }
 
+  // NEW: Search notes by title and content
+  Future<List<Note>> searchNotes(String query) async {
+    if (!_isInitialized) await initialize();
+
+    if (query.trim().isEmpty) {
+      // Return active notes if query is empty
+      final allNotes = await isar.notes.where().findAll();
+      return allNotes
+          .where((note) => !note.isDeleted && !note.isArchived)
+          .toList();
+    }
+
+    final searchQuery = query.toLowerCase().trim();
+
+    // Get all active notes
+    final allNotes = await isar.notes.where().findAll();
+    final activeNotes = allNotes.where(
+      (note) => !note.isDeleted && !note.isArchived,
+    );
+
+    // Search in title (using Isar's built-in features)
+    final matchingNotes = <Note>[];
+
+    for (final note in activeNotes) {
+      final titleMatch = note.title.toLowerCase().contains(searchQuery);
+
+      // For body search, we need to load content from file
+      bool contentMatch = false;
+      if (!titleMatch) {
+        try {
+          final content = await note.getContent();
+          contentMatch = content.toLowerCase().contains(searchQuery);
+        } catch (e) {
+          print('Error searching note content: $e');
+        }
+      }
+
+      if (titleMatch || contentMatch) {
+        matchingNotes.add(note);
+      }
+    }
+
+    return matchingNotes;
+  }
+
   Future<List<Note>> getTrashNotes() async {
     if (!_isInitialized) await initialize();
     final allNotes = await isar.notes.where().findAll();

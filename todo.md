@@ -6,7 +6,7 @@
 [ ] folder (notebooks)
 [x] click to edit
 [ ] tags
-[ ] search
+[x] search
 [ ] todos support
 [x] markdown support
 [ ] images

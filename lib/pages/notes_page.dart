@@ -30,6 +30,12 @@ class _NotesPageState extends State<NotesPage>
   // NEW: Folder filtering state
   String _selectedFolder = ''; // Empty = "All", folder name = specific folder
 
+  // NEW: Search state
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  List<Note> _searchResults = [];
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +55,7 @@ class _NotesPageState extends State<NotesPage>
   @override
   void dispose() {
     _animationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -93,6 +100,46 @@ class _NotesPageState extends State<NotesPage>
     final noteDatabase = context.read<NoteDatabase>();
     noteDatabase.fetchNotes();
     noteDatabase.fetchHabits(); // Also initialize habits data
+  }
+
+  // NEW: Search functionality
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _searchQuery = query;
+    });
+
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+
+    final noteDatabase = context.read<NoteDatabase>();
+    final results = await noteDatabase.searchNotes(query);
+
+    setState(() {
+      _searchResults = results;
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchQuery = '';
+        _searchController.clear();
+        _searchResults = [];
+      }
+    });
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchQuery = '';
+      _searchController.clear();
+      _searchResults = [];
+    });
   }
 
   Future<void> _performSync() async {
@@ -191,40 +238,92 @@ class _NotesPageState extends State<NotesPage>
         color: colorScheme.primary,
         child: Consumer<NoteDatabase>(
           builder: (context, noteDatabase, child) {
-            final notes = noteDatabase.currentNotes;
+            // If searching, use search results instead of filtering by folder
+            final notes = _isSearching && _searchQuery.isNotEmpty
+                ? _searchResults
+                : noteDatabase.currentNotes;
 
-            if (notes.isEmpty) {
+            if (notes.isEmpty && !_isSearching) {
               return _EmptyNotesView(onCreateNote: _createNote, theme: theme);
             }
 
-            // Build folder structure for filtering
-            final folderStructure = FolderStructure(notes);
-            final filteredNotes = folderStructure.getNotesInFolder(
-              _selectedFolder,
-            );
+            // Build folder structure for filtering (only when not searching)
+            List<Note> displayNotes;
+            if (_isSearching && _searchQuery.isNotEmpty) {
+              displayNotes = _searchResults;
+            } else {
+              final folderStructure = FolderStructure(notes);
+              displayNotes = folderStructure.getNotesInFolder(_selectedFolder);
+            }
 
             return Column(
               children: [
-                // Horizontal scrollable folder chips
-                _FolderChipsBar(
-                  folders: folderStructure.getAllFolders(),
-                  selectedFolder: _selectedFolder,
-                  onFolderSelected: _onFolderSelected,
-                  onCreateFolder: _showCreateFolderDialog,
-                  colorScheme: colorScheme,
-                ),
+                // Only show folder chips when not searching
+                if (!_isSearching || _searchQuery.isEmpty)
+                  _FolderChipsBar(
+                    folders: FolderStructure(notes).getAllFolders(),
+                    selectedFolder: _selectedFolder,
+                    onFolderSelected: _onFolderSelected,
+                    onCreateFolder: _showCreateFolderDialog,
+                    colorScheme: colorScheme,
+                  ),
                 // Notes list
                 Expanded(
-                  child: filteredNotes.isEmpty
-                      ? _EmptyFolderView(
-                          folderName: _selectedFolder.isEmpty
-                              ? 'All'
-                              : _selectedFolder,
-                          onCreateNote: () => _createNoteInCurrentFolder(),
-                          theme: theme,
-                        )
+                  child: displayNotes.isEmpty
+                      ? _isSearching && _searchQuery.isNotEmpty
+                            ? _EmptySearchView(
+                                query: _searchQuery,
+                                theme: theme,
+                              )
+                            : _EmptyFolderView(
+                                folderName: _selectedFolder.isEmpty
+                                    ? 'All'
+                                    : _selectedFolder,
+                                onCreateNote: () =>
+                                    _createNoteInCurrentFolder(),
+                                theme: theme,
+                              )
                       : CustomScrollView(
                           slivers: [
+                            // Show search info banner if searching
+                            if (_isSearching && _searchQuery.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    8,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primaryContainer
+                                          .withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.search_rounded,
+                                          size: 16,
+                                          color: colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Found ${displayNotes.length} result${displayNotes.length == 1 ? '' : 's'} for "$_searchQuery"',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: colorScheme.onSurface,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             SliverPadding(
                               padding: const EdgeInsets.fromLTRB(
                                 16,
@@ -237,7 +336,7 @@ class _NotesPageState extends State<NotesPage>
                                   context,
                                   index,
                                 ) {
-                                  final note = filteredNotes[index];
+                                  final note = displayNotes[index];
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 8.0),
                                     child: _SwipeableNoteTile(
@@ -248,7 +347,7 @@ class _NotesPageState extends State<NotesPage>
                                       onDelete: () => _moveNoteToTrash(note.id),
                                     ),
                                   );
-                                }, childCount: filteredNotes.length),
+                                }, childCount: displayNotes.length),
                               ),
                             ),
                           ],
@@ -364,17 +463,39 @@ class _NotesPageState extends State<NotesPage>
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onSurface,
-        title: Text(
-          title,
-          style: textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
-          ),
-        ),
+        title: _isSearching
+            ? _buildSearchBar(colorScheme)
+            : Text(
+                title,
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
+                ),
+              ),
         centerTitle: false,
+        leading: _isSearching
+            ? IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: colorScheme.onSurface,
+                ),
+                onPressed: _toggleSearch,
+              )
+            : null,
         actions: [
+          // Search button
+          if (_currentIndex == 0 && !_isSearching)
+            IconButton(
+              onPressed: _toggleSearch,
+              icon: Icon(
+                Icons.search_rounded,
+                color: colorScheme.onSurfaceVariant,
+                size: 22,
+              ),
+              tooltip: 'Search notes',
+            ),
           // Only show Sync button on Notes page
-          if (_currentIndex == 0) ...[
+          if (_currentIndex == 0 && !_isSearching) ...[
             Semantics(
               label: _isSyncing
                   ? 'Syncing notes in progress'
@@ -559,6 +680,27 @@ class _NotesPageState extends State<NotesPage>
           ),
         ),
       ),
+    );
+  }
+
+  // NEW: Build search AppBar title
+  Widget _buildSearchBar(ColorScheme colorScheme) {
+    return TextField(
+      controller: _searchController,
+      autofocus: true,
+      style: TextStyle(color: colorScheme.onSurface),
+      decoration: InputDecoration(
+        hintText: 'Search notes...',
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        border: InputBorder.none,
+        suffixIcon: _searchQuery.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, color: colorScheme.onSurfaceVariant),
+                onPressed: _clearSearch,
+              )
+            : null,
+      ),
+      onChanged: (value) => _performSearch(value),
     );
   }
 }
@@ -1044,6 +1186,50 @@ class _EmptyFolderView extends StatelessWidget {
               foregroundColor: colorScheme.primary,
               side: BorderSide(
                 color: colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Empty state for when search returns no results
+class _EmptySearchView extends StatelessWidget {
+  final String query;
+  final ThemeData theme;
+
+  const _EmptySearchView({required this.query, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 64,
+            color: colorScheme.surfaceContainerHighest,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No results found',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'No notes found matching "$query"',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
