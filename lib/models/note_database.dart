@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:skadoosh_app/services/widget_service.dart';
 import 'package:skadoosh_app/models/note.dart';
 import 'package:skadoosh_app/models/habit.dart';
 import 'package:skadoosh_app/models/pending_image_upload.dart';
@@ -415,6 +416,8 @@ class NoteDatabase extends ChangeNotifier {
       ..category = HabitCategory.other;
     await isar.writeTxn(() => isar.habits.put(newHabit));
     await fetchHabits();
+    // Update widgets after adding habit
+    await WidgetService.updateHabitWidget();
   }
 
   Future<void> fetchHabits() async {
@@ -465,6 +468,8 @@ class NoteDatabase extends ChangeNotifier {
         await isar.habits.put(habit);
       });
       await fetchHabits();
+      // Update widgets after checking habit completion
+      await WidgetService.updateHabitWidget();
     }
   }
 
@@ -519,6 +524,8 @@ class NoteDatabase extends ChangeNotifier {
 
     await isar.writeTxn(() => isar.todos.put(newTodo));
     await fetchTodos();
+    // Update widgets after adding task
+    await WidgetService.updateTaskWidget();
   }
 
   Future<void> toggleTodo(int id) async {
@@ -529,8 +536,12 @@ class NoteDatabase extends ChangeNotifier {
         await isar.todos.put(todo);
       });
       await fetchTodos();
+      // Update widgets after toggling task
+      await WidgetService.updateTaskWidget();
     }
   }
+
+  Future<Todo?> getTodoById(int id) async => await isar.todos.get(id);
 
   Future<void> deleteTodo(int id) async {
     await isar.writeTxn(() => isar.todos.delete(id));

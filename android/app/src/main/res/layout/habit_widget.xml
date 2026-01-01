@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_habit_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/widget_background"
+    android:clickable="true">
+
+    <TextView
+        android:id="@+id/widget_habit_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Today's Habits"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/widget_habit_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 / 0"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="completed"
+            android:textColor="#A0A0A0"
+            android:textSize="12sp"/>
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/widget_habit_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:progressTint="#4CAF50"
+        android:progressBackgroundTint="#404040"
+        android:paddingBottom="12dp"/>
+
+    <!-- Individual habit items as clickable buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_habit_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="○ Habit 1"
+            android:textColor="#E0E0E0"
+            android:textSize="16sp"
+            android:paddingVertical="8dp"
+            android:paddingHorizontal="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_habit_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="○ Habit 2"
+            android:textColor="#E0E0E0"
+            android:textSize="16sp"
+            android:paddingVertical="8dp"
+            android:paddingHorizontal="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_habit_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="○ Habit 3"
+            android:textColor="#E0E0E0"
+            android:textSize="16sp"
+            android:paddingVertical="8dp"
+            android:paddingHorizontal="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_habit_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="○ Habit 4"
+            android:textColor="#E0E0E0"
+            android:textSize="16sp"
+            android:paddingVertical="8dp"
+            android:paddingHorizontal="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_habit_5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="○ Habit 5"
+            android:textColor="#E0E0E0"
+            android:textSize="16sp"
+            android:paddingVertical="8dp"
+            android:paddingHorizontal="4dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/widget_habit_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No habits yet"
+            android:textColor="#A0A0A0"
+            android:textSize="14sp"
+            android:paddingVertical="4dp"
+            android:gravity="center"
+            android:visibility="visible"/>
+
+    </LinearLayout>
+
+</LinearLayout>

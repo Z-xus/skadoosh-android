@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Skadoosh</string>
+    <string name="note_widget_description">View your latest note on your home screen</string>
+    <string name="habit_widget_description">Track today\'s habits at a glance</string>
+    <string name="quick_note_widget_description">Quickly create a new note</string>
+    <string name="task_widget_description">Check off your tasks directly from the widget</string>
+</resources>
