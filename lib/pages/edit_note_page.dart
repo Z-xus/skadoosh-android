@@ -746,35 +746,75 @@ class _EditNotePageState extends State<EditNotePage> {
                           ? 16
                           : 80, // No toolbar in preview mode
                     ),
-                    child: AppFlowyEditor(
+                    child: MobileFloatingToolbar(
                       editorState: _editorState,
-                      editable:
-                          !_isPreviewMode, // Disable editing in preview mode
-                      editorStyle: EditorStyle.mobile(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16, // Reduced padding
-                          vertical: 8,
-                        ),
-                        cursorColor: _isPreviewMode
-                            ? Colors.transparent
-                            : tokens.accentPrimary,
-                        selectionColor: _isPreviewMode
-                            ? Colors.transparent
-                            : tokens.accentPrimary.withValues(alpha: 0.2),
-                        dragHandleColor: _isPreviewMode
-                            ? Colors.transparent
-                            : tokens.accentPrimary,
-                        textStyleConfiguration: TextStyleConfiguration(
-                          text: TextStyle(
-                            fontSize: 17,
-                            color: textColor,
-                            height: 1.5,
+                      editorScrollController: EditorScrollController(
+                        editorState: _editorState,
+                        shrinkWrap: false,
+                      ),
+                      floatingToolbarHeight: 32,
+                      toolbarBuilder: (context, anchor, closeToolbar) {
+                        return AdaptiveTextSelectionToolbar.editable(
+                          clipboardStatus: ClipboardStatus.pasteable,
+                          onCopy: () {
+                            copyCommand.execute(_editorState);
+                            closeToolbar();
+                          },
+                          onCut: () {
+                            cutCommand.execute(_editorState);
+                            closeToolbar();
+                          },
+                          onPaste: () {
+                            pasteCommand.execute(_editorState);
+                            closeToolbar();
+                          },
+                          onSelectAll: () {
+                            selectAllCommand.execute(_editorState);
+                            closeToolbar();
+                          },
+                          onLiveTextInput: null,
+                          onLookUp: null,
+                          onSearchWeb: null,
+                          onShare: null,
+                          anchors: TextSelectionToolbarAnchors(
+                            primaryAnchor: anchor,
                           ),
-                          // Add explicit text formatting styles for visual feedback
-                          bold: const TextStyle(fontWeight: FontWeight.bold),
-                          italic: const TextStyle(fontStyle: FontStyle.italic),
-                          underline: const TextStyle(
-                            decoration: TextDecoration.underline,
+                        );
+                      },
+                      child: AppFlowyEditor(
+                        editorState: _editorState,
+                        editable:
+                            !_isPreviewMode, // Disable editing in preview mode
+                        showMagnifier:
+                            true, // Enable magnifier and text selection toolbar on mobile
+                        editorStyle: EditorStyle.mobile(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16, // Reduced padding
+                            vertical: 8,
+                          ),
+                          cursorColor: _isPreviewMode
+                              ? Colors.transparent
+                              : tokens.accentPrimary,
+                          selectionColor: _isPreviewMode
+                              ? Colors.transparent
+                              : tokens.accentPrimary.withValues(alpha: 0.2),
+                          dragHandleColor: _isPreviewMode
+                              ? Colors.transparent
+                              : tokens.accentPrimary,
+                          textStyleConfiguration: TextStyleConfiguration(
+                            text: TextStyle(
+                              fontSize: 17,
+                              color: textColor,
+                              height: 1.5,
+                            ),
+                            // Add explicit text formatting styles for visual feedback
+                            bold: const TextStyle(fontWeight: FontWeight.bold),
+                            italic: const TextStyle(
+                              fontStyle: FontStyle.italic,
+                            ),
+                            underline: const TextStyle(
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
                       ),
