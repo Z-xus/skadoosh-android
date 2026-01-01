@@ -928,8 +928,40 @@ class _SwipeableNoteTileState extends State<_SwipeableNoteTile>
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                         ],
+
+                        // Tags (show first 3 only)
+                        if (widget.note.tags.isNotEmpty) ...[
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: widget.note.tags.take(3).map((tag) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '#$tag',
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onPrimaryContainer,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+
+                        const Spacer(),
 
                         // Metadata Row: Date & Sync on ONE line
                         Row(

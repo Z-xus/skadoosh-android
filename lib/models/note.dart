@@ -52,6 +52,10 @@ class Note {
   List<String> localImagePaths = []; // Local cached image paths
   bool hasImages = false;
 
+  // NEW: Tags support for organization
+  @Index() // For fast tag filtering
+  List<String> tags = []; // List of tag names (e.g., ["work", "urgent", "ideas"])
+
   // NEW: Bidirectional mapping between R2 URLs and local paths (stored as JSON)
   // This allows offline fallback when R2 URL is unavailable
   String?

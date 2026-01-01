@@ -183,6 +183,36 @@ class NoteDatabase extends ChangeNotifier {
     return matchingNotes;
   }
 
+  // NEW: Get all unique tags from all notes
+  Future<List<String>> getAllTags() async {
+    if (!_isInitialized) await initialize();
+
+    final allNotes = await isar.notes.where().findAll();
+    final activeNotes = allNotes.where(
+      (note) => !note.isDeleted && !note.isArchived,
+    );
+
+    final Set<String> tags = {};
+    for (final note in activeNotes) {
+      tags.addAll(note.tags);
+    }
+
+    return tags.toList()..sort();
+  }
+
+  // NEW: Filter notes by tag
+  Future<List<Note>> getNotesByTag(String tag) async {
+    if (!_isInitialized) await initialize();
+
+    final allNotes = await isar.notes.where().findAll();
+    return allNotes
+        .where(
+          (note) =>
+              !note.isDeleted && !note.isArchived && note.tags.contains(tag),
+        )
+        .toList();
+  }
+
   Future<List<Note>> getTrashNotes() async {
     if (!_isInitialized) await initialize();
     final allNotes = await isar.notes.where().findAll();
@@ -205,6 +235,7 @@ class NoteDatabase extends ChangeNotifier {
     String? body,
     String? fileName,
     String? relativePath,
+    List<String>? tags,
   }) async {
     final existingNote = await isar.notes.get(id);
     if (existingNote != null && !existingNote.isDeleted) {
@@ -214,6 +245,7 @@ class NoteDatabase extends ChangeNotifier {
       if (relativePath != null) existingNote.relativePath = relativePath;
       if (relativePath == null && fileName != null)
         existingNote.relativePath = fileName;
+      if (tags != null) existingNote.tags = tags;
       existingNote.updatedAt = DateTime.now();
       existingNote.needsSync = true;
       await isar.writeTxn(() async {
